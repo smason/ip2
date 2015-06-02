@@ -32,12 +32,15 @@ structure is passed to `run_CSI`.  This structure contains:
  * `time_values` double vector, as per demo data
  * `toplot` single numeric value
  * `tf` double vector, indicies of genes to treat as transcription factors
- * `gene_idx` as `tf`
- * params: has members
-   *  `type` contained the string `CSI` when I ran. may also be `HCSI`?
+ * `gene_idx` as per `tf`
+ * `params`: has members
+   *  `type` either `CSI` or `Hierarchical CSI`
    * `Pr` priors for hyper parameters
-   * `inference` contained 1, 2 for MCMC?
-   * `sparse` optimisation
+   * `inference` 1 for EM or 2 for MCMC (only for CSI).
+   * `sparse` optimisation (only for EM)
+   * `N` number of MC steps (only for MCMC or Hierarchical)
+   * `temp` temp for Hierarchical
+   * `fixtemp` boolean for Hierarchical?
    * `indegree` where to truncate the in-degree
    * `dirname` output directory
    * `parEnv` not sure, empty matrix!
