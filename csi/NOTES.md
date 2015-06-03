@@ -21,16 +21,16 @@ all subdirectories are added to Matlab's search path.  The data is
 loaded, parsed, genes and transcription factors selected and finally a
 structure is passed to `run_CSI`.  This structure contains:
 
+ * `filename` string
  * `data` a double matrix, as per demo data file
- * `genenames` a cell array
- * `genedesc` a cell array
+ * `genenames` a cell array of gene names
+ * `genedesc` a cell array of gene descriptions
+ * `replicatenames` a cell array of replicate names
  * `orig_startingCols` not sure
  * `startingCols` matrix describing which columns of the data refer to
    which treatment
- * `replicatenames` a cell array
- * `filename` string
  * `time_values` double vector, as per demo data
- * `toplot` single numeric value
+ * `toplot` scalar numeric value
  * `tf` double vector, indicies of genes to treat as transcription factors
  * `gene_idx` as per `tf`
  * `params`: has members
@@ -44,3 +44,18 @@ structure is passed to `run_CSI`.  This structure contains:
    * `indegree` where to truncate the in-degree
    * `dirname` output directory
    * `parEnv` not sure, empty matrix!
+
+`run_CSI` is still within the GUI, more investigation needed!  It also
+documents the contents of `data`, which appear to be consistent with
+what I inferred.  The first stage prints out a description of the
+options chosen along with a summary of the data size.  Next the data,
+`D`, is normalised (within each gene; mean=0, sd=1) and split into two
+cell arrays `Xin` and `Yin` , each `nreps` long.  The data for gene
+`ijk` and replicate `i` is extracted, 
+
+`run_CSI` appears to have a big distinction between CSI and HCSI, file
+handles are set up for preprocessing, running for a single gene, and
+postprocessing.  Focusing on the _simple_ Vanilla EM CSI seems like a
+good starting point, will come back to other (more complicated?)
+versions later.
+
