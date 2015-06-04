@@ -72,7 +72,20 @@ The meat of CSI is in `run_csi_for_one_gene` (in `run_CSI.m`), with a
 big divide depending on whether sparse processing has been selected.
 Starting with the non-sparse implementation, we calculate `KSTAR` then
 the `Pa` (parental set?) and pass off to `CSI_EM_v2` (WTF is the
-`_v2`, why isn't there just a "current" CSI EM algorithm distributed).
+`_v2`, why isn't there just a "current" CSI EM algorithm
+distributed---Chris says it's because of a lack of version control).
 
 `CSI_EM_v2` is in `Functions/General`, this gets called from the GUI
-with four parameters.
+with four parameters.  First half of the code seems to be decoding
+parameters, probably for compatibility with different callers?
+Parameters are then "randomly" initialised, and the parameters
+optimised to minimise `CSIEngine_v2`.  The results are then summarised
+and returned to the caller.
+
+`CSIEngine_v2` is also in `Functions/General`, and seems to be about
+as far as we need to go.  Various hacks to deal with varargs that
+appear unnecessary, followed by lots of calls to the GPML library to
+get marginal likelihoods.  There appear to be `_v3` versions of lots
+of functions, after speaking with Chris, these are likely the versions
+that came from Ahmed Shifaz and are only partially incorporated into
+the code.
