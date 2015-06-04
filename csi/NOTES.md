@@ -59,3 +59,20 @@ postprocessing.  Focusing on the _simple_ Vanilla EM CSI seems like a
 good starting point, will come back to other (more complicated?)
 versions later.
 
+The preprocessing for CSI takes all the matrices from the nice cell
+array and concatenates them back into a matrix!  It leaves a structure
+with two elements `.X` and `.Y` defined.  There is a choice of whether
+a serial or parallel run will be attempted, but both will loop through
+every gene with the parallel version passing each gene off to a
+separate task---could be interesting to measure how much time is spent
+distributing data around the cluster, probably not much as the data
+should be "small".
+
+The meat of CSI is in `run_csi_for_one_gene` (in `run_CSI.m`), with a
+big divide depending on whether sparse processing has been selected.
+Starting with the non-sparse implementation, we calculate `KSTAR` then
+the `Pa` (parental set?) and pass off to `CSI_EM_v2` (WTF is the
+`_v2`, why isn't there just a "current" CSI EM algorithm distributed).
+
+`CSI_EM_v2` is in `Functions/General`, this gets called from the GUI
+with four parameters.
