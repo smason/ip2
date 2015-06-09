@@ -45,21 +45,25 @@ class GradientTool:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.priorShape = np.array([2.0, 2.0, 1.5])
-        self.priorScale = np.array([0.2, 0.5, 0.1])
+        self.prior = sps.gamma(np.array([2.0, 2.0, 1.5]),
+                               scale=np.array([0.2, 0.5, 0.1]))
+
+    def rvTheta(self):
+        "Draw a random theta from prior"
+        return self.prior.rvs()
 
     def loglik(self, theta):
+        "Calculate the log-likelihood of this model for a given theta."
         # generate covariance matrix
         cov = (
             covSquaredExponential(self.x, theta[0], theta[1]) +
             covNoise(self.x, 1e-8 + theta[2]))
-        # log-likelihood is product of multivariate normal and prior
+        # log-likelihood is product of multivariate normal and gamma priors on theta
         return (sps.multivariate_normal.logpdf(self.y, mean=None, cov=cov) +
-                sps.gamma.logpdf(theta,
-                                 self.priorShape,
-                                 self.priorScale).sum())
+                self.prior.logpdf(theta).sum())
 
     def optimise(self, theta):
+        "Optimise theta to find the parameters that result in maximum likelihood."
         # optimise log(theta) so they are constrained to be > 0
         return spo.minimize(lambda theta: -self.loglik(np.exp(theta)),
                             np.log(theta), method='Nelder-Mead')
@@ -82,6 +86,6 @@ if __name__ == "__main__":
     for i in range(0,2):
         t0 = time.time()
         m = GradientTool(t, mat.data[i,:])
-        print(m.optimise([0.3,1.5,0.1]))
+        print(m.optimise(m.rvTheta()))
         t1 = time.time()
         print("time taken: %g\n" % (t1-t0))
