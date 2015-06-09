@@ -1,23 +1,25 @@
 from __future__ import absolute_import, division, print_function
 
-import numpy       as np
-import scipy.stats as sps
+import numpy          as np
+import scipy.stats    as sps
+import scipy.optimize as spo
+
+def normaliseArray(x):
+    mn = np.nanmin(x)
+    mx = np.nanmax(x)
+    return (x - mn) / (mx - mn)
 
 def squaredDistance(x):
     "Calculate squared-distance between every pair of elements in the given vector"
     return (x - x[:,None]) ** 2
 
-def covSquaredExponential(x, ell, sf2):
+def covSquaredExponential(x, ell, sf):
     "Squared Exponential covariance function, as per covSEiso from GPML."
-    return sf2 * np.exp(-squaredDistance(x / ell) / 2)
+    return sf**2 * np.exp(-squaredDistance(x / ell) / 2)
 
-def covNoise(x, s2):
+def covNoise(x, s):
     "Independent covariance function, as per covNoise from GPML."
-    return s2 * np.eye(len(x))
-
-class GaussianProcess:
-    def __init__(self, cov):
-        self.cov = cov
+    return s**2 * np.eye(len(x))
 
 class NamedMatrix:
     def __init__(self, colnames, rownames, data):
@@ -39,29 +41,47 @@ def readNamedMatrix(itr, dtype=np.float64):
 
     return NamedMatrix(names, rows, np.asarray(data, dtype=dtype))
 
-def calcGradients(x, y):
-    def opt(theta):
-        # parameters are constrained to be > 0
-        theta = np.exp(theta)
+class GradientTool:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.priorShape = np.array([2.0, 2.0, 1.5])
+        self.priorScale = np.array([0.2, 0.5, 0.1])
+
+    def loglik(self, theta):
+        # generate covariance matrix
         cov = (
-            covSquaredExponential(x, theta[0], theta[1]) +
-            covNoise(x, theta[2]))
-        ll = (
-            sps.multivariate_normal.logpdf(y, mean=None, cov=cov) +
-            sps.gamma.logpdf(theta, 2))
+            covSquaredExponential(self.x, theta[0], theta[1]) +
+            covNoise(self.x, 1e-8 + theta[2]))
+        # log-likelihood is product of multivariate normal and prior
+        return (sps.multivariate_normal.logpdf(self.y, mean=None, cov=cov) +
+                sps.gamma.logpdf(theta,
+                                 self.priorShape,
+                                 self.priorScale).sum())
+
+    def optimise(self, theta):
+        # optimise log(theta) so they are constrained to be > 0
+        return spo.minimize(lambda theta: -self.loglik(np.exp(theta)),
+                            np.log(theta), method='Nelder-Mead')
 
 if __name__ == "__main__":
     import sys
     import csv
     import re
 
+    import time
+
     mat = readNamedMatrix(csv.reader(sys.stdin))
 
     # remove the "TP" that has been prepended to the times
-    time = [re.sub("^TP","",x) for x in mat.colnames]
+    t = [re.sub("^TP","",x) for x in mat.colnames]
 
-    # convert colnames into a NumPy matrix
-    time = np.asarray(time, dtype=np.float64)
+    # convert colnames into a NumPy matrix and normalise
+    t = normaliseArray(np.asarray(t, dtype=np.float64))
 
-    print(mat.data.shape)
-    print(time.shape)
+    for i in range(0,2):
+        t0 = time.time()
+        m = GradientTool(t, mat.data[i,:])
+        print(m.optimise([0.3,1.5,0.1]))
+        t1 = time.time()
+        print("time taken: %g\n" % (t1-t0))
