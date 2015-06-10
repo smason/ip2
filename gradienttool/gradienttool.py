@@ -52,14 +52,17 @@ class GradientTool:
         "Draw a random theta from prior"
         return self.prior.rvs()
 
-    def loglik(self, theta):
-        "Calculate the log-likelihood of this model for a given theta."
-        # generate covariance matrix
-        cov = (
+    def cov(self, theta):
+        "The covariance matrix for a given theta"
+        return (
             covSquaredExponential(self.x, theta[0], theta[1]) +
             covNoise(self.x, 1e-8 + theta[2]))
-        # log-likelihood is product of multivariate normal and gamma priors on theta
-        return (sps.multivariate_normal.logpdf(self.y, mean=None, cov=cov) +
+
+    def loglik(self, theta):
+        "Calculate the log-likelihood of this model for a given theta."
+        # log-likelihood is product of data given multivariate normal and gamma
+        # priors on theta
+        return (sps.multivariate_normal.logpdf(self.y, mean=None, cov=self.cov(theta)) +
                 self.prior.logpdf(theta).sum())
 
     def optimise(self, theta):
@@ -83,9 +86,14 @@ if __name__ == "__main__":
     # convert colnames into a NumPy matrix and normalise
     t = normaliseArray(np.asarray(t, dtype=np.float64))
 
+    np.set_printoptions(precision=4, edgeitems=4, suppress=True)
+
     for i in range(0,2):
         t0 = time.time()
         m = GradientTool(t, mat.data[i,:])
-        print(m.optimise(m.rvTheta()))
+        otheta = m.optimise(m.rvTheta())
+        print(otheta)
+        theta = np.exp(otheta.x)
+        print(m.cov(theta))
         t1 = time.time()
         print("time taken: %g\n" % (t1-t0))
