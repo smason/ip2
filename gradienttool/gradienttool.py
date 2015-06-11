@@ -21,6 +21,14 @@ def covNoise(x, s):
     "Independent covariance function, as per covNoise from GPML."
     return s**2 * np.eye(len(x))
 
+def gpGaussPredict(x, y, xs, covfn):
+    "Draw predictions from GP, given a Gaussian likelihood."
+
+    K = covfn(x)
+    m = np.zeros() # not needed?
+
+    return np.array([])
+
 class NamedMatrix:
     def __init__(self, colnames, rownames, data):
         assert data.shape == (len(rownames),len(colnames))
@@ -52,11 +60,12 @@ class GradientTool:
         "Draw a random theta from prior"
         return self.prior.rvs()
 
-    def cov(self, theta):
-        "The covariance matrix for a given theta"
-        return (
-            covSquaredExponential(self.x, theta[0], theta[1]) +
-            covNoise(self.x, 1e-8 + theta[2]))
+    def cov(self, theta, withnoise=True):
+        "The covariance matrix for a given theta, with an optional noise term."
+        m = covSquaredExponential(self.x, theta[0], theta[1]);
+        if withnoise:
+            m += covNoise(self.x, 1e-8 + theta[2])
+        return m
 
     def loglik(self, theta):
         "Calculate the log-likelihood of this model for a given theta."
@@ -72,6 +81,18 @@ class GradientTool:
                             np.log(theta), method='Nelder-Mead')
 
 if __name__ == "__main__":
+    import scipy.io as sio
+
+    # np.set_printoptions(precision=4, edgeitems=4, suppress=True)
+
+    out = sio.loadmat('demData-out-2.mat')
+    theta = np.exp(out['loghyper'][:,0])
+    m = GradientTool(out['Tstar'][:,0], out['X'][:,0])
+
+    delta = m.cov(theta, withnoise=False) - out['CovMatrix']
+    print(np.percentile(delta,[0,0.25,0.5,0.75,1]))
+
+if __name__ == "__main__X":
     import sys
     import csv
     import re
