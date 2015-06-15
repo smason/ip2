@@ -81,40 +81,55 @@ class GradientTool:
                             np.log(theta), method='Nelder-Mead')
 
 if __name__ == "__main__":
-    import scipy.io as sio
-
-    # np.set_printoptions(precision=4, edgeitems=4, suppress=True)
-
-    out = sio.loadmat('demData-out-2.mat')
-    theta = np.exp(out['loghyper'][:,0])
-    m = GradientTool(out['Tstar'][:,0], out['X'][:,0])
-
-    delta = m.cov(theta, withnoise=False) - out['CovMatrix']
-    print(np.percentile(delta,[0,0.25,0.5,0.75,1]))
-
-if __name__ == "__main__X":
+    import time
     import sys
     import csv
     import re
 
-    import time
+    import scipy.io as sio
 
-    mat = readNamedMatrix(csv.reader(sys.stdin))
+    import GPy
+
+    mat = sio.loadmat('testdata/demData-out-2.mat')
+
+    inp = readNamedMatrix(csv.reader(open("testdata/demData.csv")))
+
+    theta = np.exp(mat['loghyper'][:,0])
 
     # remove the "TP" that has been prepended to the times
-    t = [re.sub("^TP","",x) for x in mat.colnames]
+    t = [re.sub("^TP","",x) for x in inp.colnames]
 
     # convert colnames into a NumPy matrix and normalise
     t = normaliseArray(np.asarray(t, dtype=np.float64))
 
-    np.set_printoptions(precision=4, edgeitems=4, suppress=True)
+    xs = np.unique(t)
+
+    # np.set_printoptions(precision=4, edgeitems=4, suppress=True)
 
     for i in range(0,2):
         t0 = time.time()
-        m = GradientTool(t, mat.data[i,:])
-        otheta = m.optimise(m.rvTheta())
-        print(otheta)
-        theta = np.exp(otheta.x)
-        print(m.cov(theta))
-        t1 = time.time()
-        print("time taken: %g\n" % (t1-t0))
+
+        m = GPy.models.GPRegression(t[:,None], inp.data[i,:][:,None])
+        # set priors
+
+        m.optimize()
+
+        mu,var = m.predict(xs[:,None])
+        mug,varg = m.predictive_gradients(xs[:,None])
+
+        # print(mug[:,0,0])
+        print(varg)
+
+        theta = np.array([m.flattened_parameters[j].values[0] for j in range(3)])
+
+        # delta = m.cov(theta, withnoise=False) - mat['CovMatrix']
+        # print(np.percentile(delta,[0,0.25,0.5,0.75,1]))
+
+        with open("out-%i.csv" % (i+1,),"w") as fd:
+            out = csv.writer(fd)
+            out.writerow(["time","mu","var","mug","varg"])
+
+            for j in range(len(xs)):
+                out.writerow([xs[j],mu[j,0],var[j,0],mug[j,0,0],varg[j,0]])
+
+        print("time taken: %g\n" % (time.time()-t0))
