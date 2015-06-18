@@ -4,6 +4,8 @@ import numpy          as np
 import scipy.stats    as sps
 import scipy.optimize as spo
 
+import shared.filehandling as sfh
+
 def normaliseArray(x):
     mn = np.nanmin(x)
     mx = np.nanmax(x)
@@ -28,26 +30,6 @@ def gpGaussPredict(x, y, xs, covfn):
     m = np.zeros() # not needed?
 
     return np.array([])
-
-class NamedMatrix:
-    def __init__(self, colnames, rownames, data):
-        assert data.shape == (len(rownames),len(colnames))
-        self.colnames = colnames
-        self.rownames = rownames
-        self.data     = data
-
-def readNamedMatrix(itr, dtype=np.float64):
-    "Read a matrix that has a single row&column of names."
-    hdr = next(itr)
-    names = hdr[1:]
-    rows = []
-    data = []
-
-    for l in itr:
-        rows.append(l[0])
-        data.append(l[1:])
-
-    return NamedMatrix(names, rows, np.asarray(data, dtype=dtype))
 
 class GradientTool:
     def __init__(self, x, y):
@@ -90,9 +72,9 @@ if __name__ == "__main__":
 
     import GPy
 
-    mat = sio.loadmat('testdata/demData-out-2.mat')
+    mat = sio.loadmat('gradienttool/testdata/demData-out-2.mat')
 
-    inp = readNamedMatrix(csv.reader(open("testdata/demData.csv")))
+    inp = sfh.readCsvNamedMatrix(open("gradienttool/testdata/demData.csv"))
 
     theta = np.exp(mat['loghyper'][:,0])
 
