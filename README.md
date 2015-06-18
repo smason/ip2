@@ -39,3 +39,19 @@ Some of these projects are already written in languages compatible
 with the iPlant infrastructure, but others are based in Matlab and
 will be ported to Python and C++ for compatibility and performance.
 
+# General Notes #
+
+The file system used within iPlant is called *iRODS*.  It comes with
+its own set of *iCommands* for performing `ftp` like operations at the
+command line.  Alternatively there are GUI apps like iDrop and a
+`fuse` plugin available.  There are also nice Python libraries
+available for talking to iRODS servers, for example
+[python-irodsclient](https://github.com/iPlantCollaborativeOpenSource/python-irodsclient).
+
+To connect to the iPlant servers, you need the following details:
+
+    host: data.iplantcollaborative.org
+    port: 1247
+    zone: iplant
+    username: <iplant username>
+    password: <iplant password>
