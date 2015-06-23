@@ -1,66 +1,73 @@
 from __future__ import absolute_import, division, print_function
 
-import numpy          as np
-import scipy.stats    as sps
-import scipy.optimize as spo
-
-import shared.filehandling as sfh
+import numpy as np
+import scipy as sp
+import shared.gradient as g
+import GPy
 
 def normaliseArray(x):
     mn = np.nanmin(x)
     mx = np.nanmax(x)
     return (x - mn) / (mx - mn)
 
-def squaredDistance(x):
-    "Calculate squared-distance between every pair of elements in the given vector"
-    return (x - x[:,None]) ** 2
-
-def covSquaredExponential(x, ell, sf):
-    "Squared Exponential covariance function, as per covSEiso from GPML."
-    return sf**2 * np.exp(-squaredDistance(x / ell) / 2)
-
-def covNoise(x, s):
-    "Independent covariance function, as per covNoise from GPML."
-    return s**2 * np.eye(len(x))
-
-def gpGaussPredict(x, y, xs, covfn):
-    "Draw predictions from GP, given a Gaussian likelihood."
-
-    K = covfn(x)
-    m = np.zeros() # not needed?
-
-    return np.array([])
-
 class GradientTool:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-        self.prior = sps.gamma(np.array([2.0, 2.0, 1.5]),
-                               scale=np.array([0.2, 0.5, 0.1]))
+    """Code for running WSBC's Gradient-Tool analysis
 
-    def rvTheta(self):
-        "Draw a random theta from prior"
-        return self.prior.rvs()
+    :param X: time points
+    :param Y: the readings values
+    :param Xstar: where the gradient should be tested.
+    """
 
-    def cov(self, theta, withnoise=True):
-        "The covariance matrix for a given theta, with an optional noise term."
-        m = covSquaredExponential(self.x, theta[0], theta[1]);
-        if withnoise:
-            m += covNoise(self.x, 1e-8 + theta[2])
-        return m
+    def __init__(self, X, Y, Xstar=None):
+        assert len(X.shape) == 1
+        assert X.shape == Y.shape
+        if Xstar is None:
+            # numpy.unique returns the elements already sorted
+            Xstar = np.unique(X)
+        self.Xstar = Xstar
+        assert len(Xstar.shape) == 1
+        self.m = GPy.models.GPRegression(X[:,None], Y[:,None])
 
-    def loglik(self, theta):
-        "Calculate the log-likelihood of this model for a given theta."
-        # log-likelihood is product of data given multivariate normal and gamma
-        # priors on theta
-        return (sps.multivariate_normal.logpdf(self.y, mean=None, cov=self.cov(theta)) +
-                self.prior.logpdf(theta).sum())
+    def setPriorRbfLengthscale(self, shape, rate):
+        self.m.rbf.lengthscale.set_prior(GPy.priors.Gamma(shape, rate), warning=False)
+    def setPriorRbfVariance(self, shape, rate):
+        self.m.rbf.variance.set_prior(GPy.priors.Gamma(shape, rate), warning=False)
+    def setPriorNoiseVariance(self, shape, rate):
+        self.m.rbf.variance.set_prior(GPy.priors.Gamma(shape, rate), warning=False)
 
-    def optimise(self, theta):
-        "Optimise theta to find the parameters that result in maximum likelihood."
-        # optimise log(theta) so they are constrained to be > 0
-        return spo.minimize(lambda theta: -self.loglik(np.exp(theta)),
-                            np.log(theta), method='Nelder-Mead')
+    def optimize(self):
+        self.m.optimize()
+
+    def getResults(self):
+        """Returns a matrix with the data, latent function and derivative.
+
+        Columns are as follows:
+         0. the requested time points,
+         1. the mean of the latent GP,
+         2. the standard deviation of the latent GP,
+         3. the mean of the derivative of the latent GP,
+         4. the standard deviation of the derivative of the latent GP,
+         5. the t-score of the estimated derivative.
+        """
+        mu,var = self.m.predict(self.Xstar[:,None])
+        mud,vard = g.predict_derivatives(self.m, self.Xstar[:,None])
+        mu,mud = mu.flatten(),mud.flatten()
+        sd,sdd = np.sqrt(var.flatten()),np.sqrt(vard.flatten())
+        return np.hstack((
+            self.Xstar[:,None],
+            mu[:,None],sd[:,None],
+            mud[:,None],sdd[:,None],
+            ((0-mud)/sdd)[:,None]))
+
+    def plot(self,figure):
+        res = self.getResults()
+        self.m.plot(ax=figure.add_subplot(211),plot_limits=(-0.04,1.04))
+        ax2 = figure.add_subplot(212)
+        ax2.axis((-.04,1.04,-6,6))
+        # draw 95% CI
+        for y in sp.stats.norm.ppf([0.025,0.975]):
+            ax2.axhline(y,lw=1,ls='--',c='black')
+            ax2.vlines(res[:,0], [0], res[:,5]);
 
 if __name__ == "__main__":
     import time
@@ -68,15 +75,13 @@ if __name__ == "__main__":
     import csv
     import re
 
+    import shared.filehandling as sfh
+
     import scipy.io as sio
 
     import GPy
 
-    mat = sio.loadmat('gradienttool/testdata/demData-out-2.mat')
-
     inp = sfh.readCsvNamedMatrix(open("gradienttool/testdata/demData.csv"))
-
-    theta = np.exp(mat['loghyper'][:,0])
 
     # remove the "TP" that has been prepended to the times
     t = [re.sub("^TP","",x) for x in inp.colnames]
@@ -84,20 +89,18 @@ if __name__ == "__main__":
     # convert colnames into a NumPy matrix and normalise
     t = normaliseArray(np.asarray(t, dtype=np.float64))
 
-    xs = np.unique(t)
-
-    # np.set_printoptions(precision=4, edgeitems=4, suppress=True)
+    np.set_printoptions(precision=4, edgeitems=4, suppress=True)
 
     for i in range(0,2):
         t0 = time.time()
 
-        m = GPy.models.GPRegression(t[:,None], inp.data[i,:][:,None])
-        # set priors
+        gt = GradientTool(t, inp.data[i,:])
+        gt.setPriorRbfLengthscale(2.0, 0.2)
+        gt.setPriorRbfVariance(2.0, 0.5)
+        gt.setPriorNoiseVariance(1.5, 0.1)
 
-        m.optimize()
+        gt.optimise()
 
-        mu,var = m.predict(xs[:,None])
-        mug,varg = m.predictive_gradients(xs[:,None])
 
         # print(mug[:,0,0])
         print(varg)
