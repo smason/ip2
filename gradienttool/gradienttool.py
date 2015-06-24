@@ -3,6 +3,8 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 import scipy as sp
 import shared.gradient as g
+import matplotlib.pyplot as plt
+
 import GPy
 
 def normaliseArray(x):
@@ -15,17 +17,11 @@ class GradientTool:
 
     :param X: time points
     :param Y: the readings values
-    :param Xstar: where the gradient should be tested.
     """
 
-    def __init__(self, X, Y, Xstar=None):
+    def __init__(self, X, Y):
         assert len(X.shape) == 1
         assert X.shape == Y.shape
-        if Xstar is None:
-            # numpy.unique returns the elements already sorted
-            Xstar = np.unique(X)
-        self.Xstar = Xstar
-        assert len(Xstar.shape) == 1
         self.m = GPy.models.GPRegression(X[:,None], Y[:,None])
 
     def setPriorRbfLengthscale(self, shape, rate):
@@ -38,83 +34,89 @@ class GradientTool:
     def optimize(self):
         self.m.optimize()
 
-    def getResults(self):
+    def getResults(self, Xstar=None):
         """Returns a matrix with the data, latent function and derivative.
 
         Columns are as follows:
          0. the requested time points,
          1. the mean of the latent GP,
-         2. the standard deviation of the latent GP,
+         2. the variance of the latent GP,
          3. the mean of the derivative of the latent GP,
-         4. the standard deviation of the derivative of the latent GP,
+         4. the variance of the derivative of the latent GP,
          5. the t-score of the estimated derivative.
         """
-        mu,var = self.m.predict(self.Xstar[:,None])
-        mud,vard = g.predict_derivatives(self.m, self.Xstar[:,None])
+        if Xstar is None:
+            Xstar = np.unique(np.array(self.m.X))
+        mu,var = self.m.predict(Xstar[:,None])
+        mud,vard = g.predict_derivatives(self.m, Xstar[:,None])
         mu,mud = mu.flatten(),mud.flatten()
-        sd,sdd = np.sqrt(var.flatten()),np.sqrt(vard.flatten())
+        var,vard = var.flatten(),vard.flatten()
         return np.hstack((
-            self.Xstar[:,None],
-            mu[:,None],sd[:,None],
-            mud[:,None],sdd[:,None],
-            ((0-mud)/sdd)[:,None]))
+            Xstar[:,None],
+            mu[:,None],var[:,None],
+            mud[:,None],vard[:,None],
+            ((0-mud)/np.sqrt(vard))[:,None]))
 
-    def plot(self,figure):
+    def plot(self,title=None,figure=None, ylim=(-6,6)):
+        if figure is None:
+            figure = plt.figure()
+        # create space for our plots
+        ax1 = figure.add_subplot(211)
+        ax2 = figure.add_subplot(212, sharex=ax1)
+        if title is not None:
+            ax1.set_title(title)
+        # extract estimates of derivative and tscores
         res = self.getResults()
-        self.m.plot(ax=figure.add_subplot(211),plot_limits=(-0.04,1.04))
-        ax2 = figure.add_subplot(212)
-        ax2.axis((-.04,1.04,-6,6))
+        # plot the data and GP
+        self.m.plot(ax=ax1,plot_limits=(-0.04,1.04))
+        if ylim is not None:
+            ax2.set_ylim(ylim)
+        res2 = self.getResults(np.linspace(-0.04,1.04,101))
+        ax2.plot(res2[:,0],res2[:,5])
         # draw 95% CI
         for y in sp.stats.norm.ppf([0.025,0.975]):
             ax2.axhline(y,lw=1,ls='--',c='black')
-            ax2.vlines(res[:,0], [0], res[:,5]);
+        ax2.vlines(res[:,0], [0], res[:,5]);
+        # figure.tight_layout()
 
 if __name__ == "__main__":
-    import time
-    import sys
     import csv
     import re
 
+    import seaborn as sbs
+    from matplotlib.backends.backend_pdf import PdfPages
+
+    plt.switch_backend("pdf")
+
     import shared.filehandling as sfh
-
-    import scipy.io as sio
-
-    import GPy
 
     inp = sfh.readCsvNamedMatrix(open("gradienttool/testdata/demData.csv"))
 
-    # remove the "TP" that has been prepended to the times
-    t = [re.sub("^TP","",x) for x in inp.colnames]
+    # assume column headers are time, so remove anything that isn't
+    # part of a number
+    t = [re.sub("[^0-9.]","",x) for x in inp.colnames]
 
     # convert colnames into a NumPy matrix and normalise
     t = normaliseArray(np.asarray(t, dtype=np.float64))
 
-    np.set_printoptions(precision=4, edgeitems=4, suppress=True)
+    with open("output.csv",'w') as csvfd:
+        with PdfPages("output.pdf") as pdf:
+            csvout = csv.writer(csvfd)
+            csvout.writerow(["item","X","f_mean","f_variance","df_mean","df_variance","tscore"])
 
-    for i in range(0,2):
-        t0 = time.time()
+            for i in range(inp.nrows()):
+                name = inp.rownames[i]
 
-        gt = GradientTool(t, inp.data[i,:])
-        gt.setPriorRbfLengthscale(2.0, 0.2)
-        gt.setPriorRbfVariance(2.0, 0.5)
-        gt.setPriorNoiseVariance(1.5, 0.1)
+                gt = GradientTool(t, inp.data[i,:])
+                gt.setPriorRbfLengthscale(2.0, 0.2)
+                gt.setPriorRbfVariance(2.0, 0.5)
+                gt.setPriorNoiseVariance(1.5, 0.1)
 
-        gt.optimise()
+                gt.optimize()
+                fig = plt.figure(figsize=(8,7))
+                gt.plot(name,fig)
+                pdf.savefig()
+                plt.close(fig)
 
-
-        # print(mug[:,0,0])
-        print(varg)
-
-        theta = np.array([m.flattened_parameters[j].values[0] for j in range(3)])
-
-        # delta = m.cov(theta, withnoise=False) - mat['CovMatrix']
-        # print(np.percentile(delta,[0,0.25,0.5,0.75,1]))
-
-        with open("out-%i.csv" % (i+1,),"w") as fd:
-            out = csv.writer(fd)
-            out.writerow(["time","mu","var","mug","varg"])
-
-            for j in range(len(xs)):
-                out.writerow([xs[j],mu[j,0],var[j,0],mug[j,0,0],varg[j,0]])
-
-        print("time taken: %g\n" % (time.time()-t0))
+                for r in gt.getResults():
+                    csvout.writerow([name]+r.tolist())
