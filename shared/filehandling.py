@@ -14,6 +14,9 @@ class NamedMatrix:
         self.rownames = rownames
         self.data     = data
 
+    def nrows(self): return len(self.rownames)
+    def ncols(self): return len(self.colnames)
+
     def writeCsv(self, fd):
         out = csv.writer(fd)
         out.writerow([self.topleft]+self.colnames)
