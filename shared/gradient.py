@@ -7,7 +7,7 @@ def predict_derivatives(self, x_new):
     Author: Felix Berkenkamp (befelix)
 
     Parameters:
-    -----------derivative
+    -----------
     self: instance of GPy.core.gp
         With RBF kernel function
     x_new: 2d-array
@@ -26,7 +26,7 @@ def predict_derivatives(self, x_new):
         raise AttributeError('The variance prior only works for RBF kernels.')
     x_new = np.atleast_2d(x_new)
 
-    # Compute mean, initialize variancederivative
+    # Compute mean, initialize variance
     mu = self.kern.gradients_X(self.posterior.woodbury_vector.T, x_new, self.X)
     var = np.empty((x_new.shape[0], x_new.shape[1], x_new.shape[1]),
                    dtype=mu.dtype)
