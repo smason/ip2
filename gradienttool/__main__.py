@@ -13,6 +13,7 @@ import seaborn as sbs
 from gradienttool import GradientTool
 
 def normaliseArray(x):
+    "linearly scale a NumPy array @x such that the minimum is zero and the maximum is one."
     mn = np.nanmin(x)
     mx = np.nanmax(x)
     return (x - mn) / (mx - mn)
