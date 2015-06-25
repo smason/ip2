@@ -2,10 +2,11 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 import scipy as sp
-import shared.gradient as g
+import shared as ip2
 import matplotlib.pyplot as plt
 
 import GPy
+import GPy.plotting.matplot_dep.Tango as Tango
 
 def normaliseArray(x):
     mn = np.nanmin(x)
@@ -39,16 +40,16 @@ class GradientTool:
 
         Columns are as follows:
          0. the requested time points,
-         1. the mean of the latent GP,
-         2. the variance of the latent GP,
-         3. the mean of the derivative of the latent GP,
-         4. the variance of the derivative of the latent GP,
+         1. the mean of the GP's latent function,
+         2. the variance of the latent function,
+         3. the mean of the derivative of the latent function,
+         4. the variance of the derivative of the latent function,
          5. the t-score of the estimated derivative.
         """
         if Xstar is None:
             Xstar = np.unique(np.array(self.m.X))
-        mu,var = self.m.predict(Xstar[:,None])
-        mud,vard = g.predict_derivatives(self.m, Xstar[:,None])
+        mu,var = self.m._raw_predict(Xstar[:,None])
+        mud,vard = ip2.predict_derivatives(self.m, Xstar[:,None])
         mu,mud = mu.flatten(),mud.flatten()
         var,vard = var.flatten(),vard.flatten()
         return np.hstack((
@@ -57,7 +58,7 @@ class GradientTool:
             mud[:,None],vard[:,None],
             ((0-mud)/np.sqrt(vard))[:,None]))
 
-    def plot(self,title=None,figure=None, ylim=(-6,6)):
+    def plot(self,title=None,figure=None,ylim=(-6,6),Xstar=None):
         if figure is None:
             figure = plt.figure()
         # create space for our plots
@@ -66,20 +67,27 @@ class GradientTool:
         if title is not None:
             ax1.set_title(title)
         # extract estimates of derivative and tscores
-        res = self.getResults()
+        res  = self.getResults(Xstar)
+        res2 = self.getResults(np.linspace(-0.04,1.04,101))
         # plot the data and GP
         self.m.plot(ax=ax1,plot_limits=(-0.04,1.04))
+        # overlay the latent function
+        ax1.fill_between(res2[:,0],
+                         res2[:,1]+np.sqrt(res2[:,2])*sp.stats.norm.ppf(0.025),
+                         res2[:,1]+np.sqrt(res2[:,2])*sp.stats.norm.ppf(0.975),
+                         alpha=0.5,facecolor=Tango.colorsHex["mediumPurple"])
+        # plot the t-scores
+        ax2.plot(res2[:,0],res2[:,5])
+        # set the axes up so we can see the area of interest
         if ylim is not None:
             ax2.set_ylim(ylim)
-        res2 = self.getResults(np.linspace(-0.04,1.04,101))
-        ax2.plot(res2[:,0],res2[:,5])
         # draw 95% CI
         for y in sp.stats.norm.ppf([0.025,0.975]):
             ax2.axhline(y,lw=1,ls='--',c='black')
         ax2.vlines(res[:,0], [0], res[:,5]);
         # figure.tight_layout()
 
-if __name__ == "__main__":
+def _main():
     import csv
     import re
 
@@ -120,3 +128,6 @@ if __name__ == "__main__":
 
                 for r in gt.getResults():
                     csvout.writerow([name]+r.tolist())
+
+if __name__ == "__main__":
+    _main()

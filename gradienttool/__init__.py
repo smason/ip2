@@ -1,1 +1,1 @@
-import gradienttool
+from .gradienttool import *
