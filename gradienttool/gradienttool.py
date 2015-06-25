@@ -56,7 +56,7 @@ class GradientTool:
             Xstar[:,None],
             mu[:,None],var[:,None],
             mud[:,None],vard[:,None],
-            ((0-mud)/np.sqrt(vard))[:,None]))
+            (mud/np.sqrt(vard))[:,None]))
 
     def plot(self,title=None,figure=None,ylim=(-6,6),Xstar=None):
         if figure is None:
