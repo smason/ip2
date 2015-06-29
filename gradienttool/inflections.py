@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 
 def inflectionPoints(y):
     d = np.diff(y) > 0
