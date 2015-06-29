@@ -11,6 +11,15 @@ while the second row the 21 evenly spaced X values for the timeseries.
 The first column contains the 10 gene names and the remaining 10 by
 (21*5) cells contain the data values.
 
+# From Chris #
+
+## Parental Sets ##
+
+Calculation of parental sets should probably be done outside of the
+"main" CSI code—maybe in user friendly calling part.  Use case is to
+optimise hyperparameters using a smaller set (i.e. truncate at two
+parents) then run full algorithm with larger set (i.e. three parents).
+
 # Files #
 
 ## Control Flow ##
