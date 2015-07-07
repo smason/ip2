@@ -82,3 +82,14 @@ To connect to the iPlant servers, you need the following details:
     zone: iplant
     username: <iplant username>
     password: <iplant password>
+
+## Python Dependencies ##
+
+These are the minimal Python libraries that would need to be installed:
+
+    pip install numpy scipy pandas matplotlib GPy
+
+In order to run an interactive exploration in iPython, these are also
+needed:
+
+    pip install ipython pyzmq jinja2 tornado jsonschema
