@@ -5,6 +5,8 @@ import scipy as sp
 import shared as ip2
 import matplotlib.pyplot as plt
 
+import pandas as pd
+
 import GPy
 import GPy.plotting.matplot_dep.Tango as Tango
 
@@ -21,6 +23,17 @@ def zerosLinearInterpolate(xy):
         out[j] = -c/m
     return out
 
+def transformResults(res, xtrans, ytrans):
+    """Linearly transform results"""
+    out = res.set_index(res.index * xtrans[1] + xtrans[0])
+
+    out["mu"]   = out["mu"] * ytrans[1] + ytrans[0]
+    out["var"]  = out["var"] * ytrans[1] ** 2
+    out["mud"]  = out["mud"] * (ytrans[1]/xtrans[1])
+    out["vard"] = out["vard"] * (ytrans[1]/xtrans[1])**2
+
+    return out
+
 def _test():
     assert np.allclose(0.5,zerosLinearInterpolate(np.array([[0,-0.5],
                                                             [1, 0.5]])))
@@ -35,6 +48,8 @@ class GradientTool:
     def __init__(self, X, Y):
         assert len(X.shape) == 1
         assert X.shape == Y.shape
+        self.X = X
+        self.Y = Y
         self.m = GPy.models.GPRegression(X[:,None], Y[:,None])
 
     @property
@@ -55,53 +70,26 @@ class GradientTool:
         self.m.optimize()
 
     def getResults(self, Xstar=None):
-        """Returns a matrix with the data, latent function and derivative.
+        """Returns a Pandas DataFrame of the latent function, its derivative and variances.
 
-        Columns are as follows:
-         0. the requested time points,
-         1. the mean of the GP's latent function,
-         2. the variance of the latent function,
-         3. the mean of the derivative of the latent function,
-         4. the variance of the derivative of the latent function,
-         5. the t-score of the estimated derivative.
-        """
+        The `index` is time"""
+
+        # get the points we're evaluating the function at
         if Xstar is None:
-            Xstar = np.unique(np.array(self.m.X))
+            Xstar = np.unique(self.X)
+
+        # get predictions of our function and its derivative
         mu,var = self.m._raw_predict(Xstar[:,None])
         mud,vard = ip2.predict_derivatives(self.m, Xstar[:,None])
-        mu,mud = mu.flatten(),mud.flatten()
-        var,vard = var.flatten(),vard.flatten()
-        return np.hstack((
-            Xstar[:,None],
-            mu[:,None],var[:,None],
-            mud[:,None],vard[:,None],
-            (mud/np.sqrt(vard))[:,None]))
 
-    def plot(self,title=None,figure=None,ylim=(-6,6),Xstar=None):
-        if figure is None:
-            figure = plt.figure()
-        # create space for our plots
-        ax1 = figure.add_subplot(211)
-        ax2 = figure.add_subplot(212, sharex=ax1)
-        if title is not None:
-            ax1.set_title(title)
-        # extract estimates of derivative and tscores
-        res  = self.getResults(Xstar)
-        res2 = self.getResults(np.linspace(-0.04,1.04,101))
-        # plot the data and GP
-        self.m.plot(ax=ax1,plot_limits=(-0.04,1.04))
-        # overlay the latent function
-        ax1.fill_between(res2[:,0],
-                         res2[:,1]+np.sqrt(res2[:,2])*sp.stats.norm.ppf(0.025),
-                         res2[:,1]+np.sqrt(res2[:,2])*sp.stats.norm.ppf(0.975),
-                         alpha=0.5,facecolor=Tango.colorsHex["mediumPurple"])
-        # plot the t-scores
-        ax2.plot(res2[:,0],res2[:,5])
-        # set the axes up so we can see the area of interest
-        if ylim is not None:
-            ax2.set_ylim(ylim)
-        # draw 95% CI
-        for y in sp.stats.norm.ppf([0.025,0.975]):
-            ax2.axhline(y,lw=1,ls='--',c='black')
-        ax2.vlines(res[:,0], [0], res[:,5]);
-        # figure.tight_layout()
+        # put into a matrix
+        out = np.empty((len(Xstar),5),dtype=self.Y.dtype)
+        out[:,0] = mu[:,0]
+        out[:,1] = var[:,0]
+        out[:,2] = mud[:,0]
+        out[:,3] = vard[:,0,0]
+        out[:,4] = out[:,2]/np.sqrt(out[:,3])
+
+        # convert to a DataFrame and return
+        return pd.DataFrame(out, index=Xstar, columns=
+                            ["mu","var","mud","vard","tscore"])
