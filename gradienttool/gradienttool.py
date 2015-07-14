@@ -8,6 +8,23 @@ import matplotlib.pyplot as plt
 import GPy
 import GPy.plotting.matplot_dep.Tango as Tango
 
+def zerosLinearInterpolate(xy):
+    """Linearly interpolate to find all zeros from an evaluated function"""
+    ii = np.where((np.diff(xy[:,1] < 0)))[0]
+    out = np.empty(len(ii),dtype=xy.dtype)
+    for j,i in enumerate(ii):
+        x0,y0 = xy[i+0,[0,1]]
+        x1,y1 = xy[i+1,[0,1]]
+
+        m = (y0 - y1) / (x0 - x1)
+        c = y1 - m*x1
+        out[j] = -c/m
+    return out
+
+def _test():
+    assert np.allclose(0.5,zerosLinearInterpolate(np.array([[0,-0.5],
+                                                            [1, 0.5]])))
+
 class GradientTool:
     """Code for running WSBC's Gradient-Tool analysis
 
@@ -20,12 +37,19 @@ class GradientTool:
         assert X.shape == Y.shape
         self.m = GPy.models.GPRegression(X[:,None], Y[:,None])
 
+    @property
+    def rbfLengthscale(self): return float(self.m.rbf.lengthscale)
+    @property
+    def rbfVariance   (self): return float(self.m.rbf.variance)
+    @property
+    def noiseVariance (self): return float(self.m.Gaussian_noise.variance)
+
     def setPriorRbfLengthscale(self, shape, rate):
         self.m.rbf.lengthscale.set_prior(GPy.priors.Gamma(shape, rate), warning=False)
     def setPriorRbfVariance(self, shape, rate):
         self.m.rbf.variance.set_prior(GPy.priors.Gamma(shape, rate), warning=False)
     def setPriorNoiseVariance(self, shape, rate):
-        self.m.rbf.variance.set_prior(GPy.priors.Gamma(shape, rate), warning=False)
+        self.m.Gaussian_noise.variance.set_prior(GPy.priors.Gamma(shape, rate), warning=False)
 
     def optimize(self):
         self.m.optimize()

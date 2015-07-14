@@ -32,26 +32,32 @@ def main():
     # convert colnames into a NumPy matrix and normalise
     t = normaliseArray(np.asarray(t, dtype=np.float64))
 
+    gt = []
+    for i in range(inp.nrows()):
+        g = GradientTool(t, inp.data[i,:])
+        g.setPriorRbfLengthscale(2.0, 0.2)
+        g.setPriorRbfVariance(2.0, 0.5)
+        g.setPriorNoiseVariance(1.5, 0.1)
+        g.optimize()
+
+        gt.append(g)
+
     with open("output.csv",'w') as csvfd:
         with PdfPages("output.pdf") as pdf:
             csvout = csv.writer(csvfd)
             csvout.writerow(["item","X","f_mean","f_variance","df_mean","df_variance","tscore"])
 
-            for i in range(inp.nrows()):
+            for i in np.argsort([g.rbfLengthscale for g in gt]):
+                g = gt[i]
+
                 name = inp.rownames[i]
 
-                gt = GradientTool(t, inp.data[i,:])
-                gt.setPriorRbfLengthscale(2.0, 0.2)
-                gt.setPriorRbfVariance(2.0, 0.5)
-                gt.setPriorNoiseVariance(1.5, 0.1)
-
-                gt.optimize()
                 fig = plt.figure(figsize=(8,7))
-                gt.plot(name,fig)
+                g.plot(name,fig)
                 pdf.savefig()
                 plt.close(fig)
 
-                for r in gt.getResults():
+                for r in g.getResults():
                     csvout.writerow([name]+r.tolist())
 
 if __name__ == "__main__":
