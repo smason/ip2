@@ -94,10 +94,14 @@ def main(args=None):
     # generate PDF output if requested
     if op.pdfoutput is not None:
         # only pull these in if needed
+        import matplotlib
         import matplotlib.pyplot as plt
         from matplotlib.backends.backend_pdf import PdfPages
 
         import seaborn as sbs
+
+        # need to switch to this because we call tight_layout
+        matplotlib.use('Agg')
 
         # write out a nicely ordered PDF file
         plt.switch_backend('pdf')

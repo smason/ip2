@@ -50,11 +50,12 @@ def doReportPlot(fig, g, title=None,
     ax2.set_ylim([-6,6])
 
     # draw data, function and error bars
-    ax1.fill_between(mu.index,
+    mui = np.array(mu.index, dtype=float) # needed for Python2.7
+    ax1.fill_between(mui,
                      mu + CI[0]*np.sqrt(var + g.noiseVariance),
                      mu + CI[1]*np.sqrt(var + g.noiseVariance),
                      facecolor='black', edgecolor='none', alpha=0.05)
-    ax1.fill_between(mu.index,
+    ax1.fill_between(mui,
                      mu + CI[0]*np.sqrt(var),
                      mu + CI[1]*np.sqrt(var),
                      facecolor='royalblue', edgecolor='none', alpha=0.2)
