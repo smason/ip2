@@ -2,7 +2,7 @@ import csv
 
 import numpy as np
 
-class NamedMatrix:
+class NamedMatrix(object):
     """Bit like a Pandas style DataFrame, but just a matrix with named
     columns and rows.
 

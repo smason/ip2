@@ -68,7 +68,7 @@ def doReportPlot(fig, g, title=None,
     for y in CI:
         ax2.axhline(y, lw=1, ls='--', color='black')
 
-class GradientTool:
+class GradientTool(object):
     """Code for running WSBC's Gradient-Tool analysis
 
     :param X: time points
