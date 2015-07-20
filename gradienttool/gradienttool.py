@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 import scipy as sp
+import scipy.stats as sps
 import shared as ip2
 import matplotlib.pyplot as plt
 
@@ -28,7 +29,7 @@ def _test():
                                                             [1, 0.5]])))
 
 def doReportPlot(fig, g, title=None,
-                 CI=sp.stats.norm.ppf([0.025,0.975])):
+                 CI=sps.norm.ppf([0.025,0.975])):
     """Generate a pair of plots for the report"""
     res1 = g.getResults()
     ar = ip2.niceAxisRange(res1.index)

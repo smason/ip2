@@ -1,13 +1,12 @@
 from __future__ import absolute_import, division, print_function
 
+import sys
+import optparse
 import csv
 import re
 
 import numpy as np
 import scipy as sp
-
-import sys
-import optparse
 
 import shared as ip2
 import gradienttool as gt
@@ -93,18 +92,13 @@ def main(args=None):
 
     # generate PDF output if requested
     if op.pdfoutput is not None:
-        # only pull these in if needed
-        import matplotlib
-        # need to switch to this because we call tight_layout
-        matplotlib.use('Agg')
-
         import matplotlib.pyplot as plt
         from matplotlib.backends.backend_pdf import PdfPages
 
         import seaborn as sbs
 
         # write out a nicely ordered PDF file
-        plt.switch_backend('pdf')
+        plt.switch_backend('Agg')
         with PdfPages(op.pdfoutput) as pdf:
             for a,b in zeros.items():
                 fig = plt.figure(figsize=(6,4))
