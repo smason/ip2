@@ -21,7 +21,8 @@ project.  As a starting point, the tools consist of:
 * Apples: Analysis of Plant Promoter-Linked Elements.  http://www2.warwick.ac.uk/fac/sci/systemsbiology/staff/ott/tools_and_software/apples/
 
 * Gradient Tool: not sure where this is from.  Looks for significant
-changes in gradient of timeseries.
+changes in gradient of timeseries.  http://www.plantcell.org/content/23/3/873.long
+
 
 * VBSSM: A Bayesian approach to reconstructing genetic regulatory
   networks with hidden factors.  doi:10.1093/bioinformatics/bti014
