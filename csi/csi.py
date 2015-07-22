@@ -4,15 +4,13 @@ import GPy
 
 import itertools as it
 
-class MetaModel(GPy.core.Model):
-    def __init__(self, models):
-        #models is a  list of GPy models.
-        GPy.core.Model.__init__(self, name='metamodel')
-        self.models = models
-        self.link_parameters(*self.models)
-
-    def log_likelihood(self):
-        return sum([m.log_likelihood() for m in self.models])
+def getIndicies(x):
+    """Returns indicies, [i], where item $x_i = x_{i-1}$."""
+    prev = None
+    for i, a in enumerate(x):
+        if a == prev:
+            yield i
+        prev = a
 
 def parentalSets(items, item, depth):
     """Iterate over all "Parental Sets".
@@ -33,11 +31,26 @@ def parentalSets(items, item, depth):
         for subset in it.combinations(l, i):
             yield (item,list(subset))
 
+class CsiEm(object):
+    def __init__(self, X):
+        self.X = X
 
-# The whole of CSI_Engine should basically move into GPy.  It's going
-# to be a bit of a fiddle figuring out how to set everything up, but
-# looks like a magic set of invocations of @link_parameter will be
-# able to
+    def setup(self, item, pset):
+        Y = self.X.iloc[item]
+
+class Csi(object):
+    def __init__(self, X):
+        self.data = X
+
+        ix = np.array(list(getIndicies([a for a,b in iter(X.columns)])))
+        self.X = X.iloc[slice(None),ix-1].T
+        self.Y = X.iloc[slice(None),ix].T
+
+    def allParents(self, item, depth):
+        return list(parentalSets(inp.shape[0], item, depth))
+
+    def runEm(self, psets):
+
 
 if __name__ == "__main__":
     import time
