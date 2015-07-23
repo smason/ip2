@@ -21,7 +21,7 @@ def parentalSets(items, item, depth):
     item.
     """
 
-    # exclude the target, duplicate list to avoid modifying callers
+    # exclude the target, duplicating list to avoid modifying callers
     # state
     l = list(items)
     l.remove(item)
@@ -50,29 +50,30 @@ class CsiEm(object):
         M = []
         Y = self.Y.iloc[:,item]
         for i in itX:
-            M.append(GPy.models.GPRegression(self.X.iloc[:,list(i)],Y))
+            M.append(GPy.models.GPRegression(self.X.iloc[:,list(i)], Y))
         self.models  = M
         self.weights = np.ones(len(M)) / len(M)
 
-    def optimiseHypers(self):
-        def fn(x):
-            ll = 0.
-            grad = np.zeros(len(x))
+    def _optfn(x):
+        ll = 0.
+        grad = np.zeros(len(x))
 
-            weights = self.weights
-            wmx = max(weights)
-            for i in np.argsort(-weights):
-                # weights are expected to be highly correlated with
-                # expected likelihood, therefore no point evaluating
-                # these
-                if weights[i] < wmx * 1e-6:
-                    continue
-                m = M[i]
-                m[''] = x
-                ll   += weights[i] * m.log_likelihood()
-                grad += weights[i] * m.gradient
-            return -ll, -grad
-        opt = sp.optimize.minimize(fn, self.hypers, jac=True,
+        weights = self.weights
+        wmx = max(weights)
+        for i in np.argsort(-weights):
+            # weights are expected to be highly correlated with
+            # expected likelihood, therefore no point evaluating
+            # these
+            if weights[i] < wmx * 1e-6:
+                continue
+            m = M[i]
+            m[''] = x
+            ll   += weights[i] * m.log_likelihood()
+            grad += weights[i] * m.gradient
+        return -ll, -grad
+
+    def optimiseHypers(self):
+        opt = sp.optimize.minimize(_optfn, self.hypers, jac=True,
                                    bounds=[(1e-8,None)]*len(self.hypers))
         if not opt.success:
             raise CsiEmFailed(res)
@@ -80,13 +81,21 @@ class CsiEm(object):
         return res
 
     def reweight(self):
+        """Recalculate the weights and return the KL divergence."""
+        # calculate the loglik of each model
         ll = np.zeros(len(self.M))
         for i,m in enumerate(self.M):
             m[''] = self.hypers
             ll[i] = m.log_likelihood()
+        # calculate the new weights
         w = np.exp(ll - max(ll))
-        self.weights = w / np.sum(w)
-        return ll
+        w /= np.sum(w)
+        # update weights, saving old so we can calculate the KL divergence
+        w0 = self.weights
+        self.weights = w
+        # calculate the KL divergence
+        kl = w * np.log(w / w0)
+        return kl[np.isfinite(kl)].sum()
 
 class Csi(object):
     def __init__(self, data):
@@ -97,19 +106,7 @@ class Csi(object):
         self.Y = data.T.iloc[slice(None),ix]
 
     def allParents(self, item, depth):
-        return list(parentalSets(range(inp.shape[0]), item, depth))
+        return list(parentalSets(range(self.data.shape[0]), item, depth))
 
-    def runEm(self, psets):
-        pass
-
-if __name__ == "__main__":
-    import time
-    import sys
-    import csv
-
-    import shared.filehandling as sfh
-
-    with open("csi/testdata/Demo_DREAM.csv") as fd:
-        data = sfh.readCsvNamedMatrix(fd)
-
-    print(data)
+    def getEm(self):
+        return CsiEm(self)
