@@ -42,32 +42,13 @@ will be ported to Python and C++ for compatibility and performance.
 
 # TODO #
 
-## Gradient Tool ##
-
-I need to get the output organised, currently it's callable from
-Python, but there's no useful standalone script as useful for iPlant.
-
-The existing Matlab code outputs the following:
-
-* One PDF for each gene/row of the dataset
-
-Each PDF contains: a plot of the data and a plot of the predicted
-latent function, a plot of the gradient of the previous, and the
-switch state.  No labels are present, but I presume in the third plot
-red is the state given a cutoff of 1 sigma, blue is for 2sigma and
-green is for 3sigma.
-
-* `Gradients.txt`
-
-CSV formatted data, with no row or column headers.  Looks like the
-inferred mean of the gradient—nothing on the variance!
-
-* `Switch_[123].txt`
-
-CSV formatted as `Gradients.txt` but contains the switch states of
-given the sigma from the filename.
-
 # General Notes #
+
+Tools could have a header at the beginning of their main report/PDF
+containing the name of the creating tool along with citation
+information.
+
+## iPlant / Agave ##
 
 The file system used within iPlant is called *iRODS*.  It comes with
 its own set of *iCommands* for performing `ftp` like operations at the
