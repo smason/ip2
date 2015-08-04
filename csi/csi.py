@@ -40,6 +40,7 @@ class CsiEmFailed(CsiError):
         self.res = res
 
 class CsiEm(object):
+    "Find MAP estimate via Expectation-Maximisation."
     def __init__(self, csi):
         self.csi = csi
         self.X = csi.X.T
@@ -48,6 +49,7 @@ class CsiEm(object):
         self.pset = []
 
     def setup(self, pset):
+        "Configure model for EM using the specified parent set."
         M = []
         for (i,j) in pset:
             if len(i) == 0:
@@ -61,6 +63,8 @@ class CsiEm(object):
         self.weights = np.ones(len(M)) / len(M)
 
     def _optfn(self, x):
+        """Return negated-loglik and gradient in a form suitable for use with
+        SciPy's numeric optimisation."""
         ll = 0.
         grad = np.zeros(len(x))
 
@@ -77,7 +81,9 @@ class CsiEm(object):
         return -ll, -grad
 
     def optimiseHypers(self):
-        print(np.sum(self.weights > max(self.weights) * 1e-6))
+        """Re-optimise hyper-parameters of the given model, throwing exception
+        on failure.
+        """
         res = sp.optimize.minimize(self._optfn, self.hypers, jac=True,
                                    bounds=[(1e-8,None)]*len(self.hypers))
         if not res.success:
@@ -86,7 +92,7 @@ class CsiEm(object):
         return res
 
     def logliks(self):
-        """Calculate the log-likelihood of each model"""
+        "Calculate the log-likelihood of each GP"
         ll = np.zeros(len(self.models))
         for i,m in enumerate(self.models):
             m[''] = self.hypers
@@ -94,7 +100,7 @@ class CsiEm(object):
         return ll
 
     def reweight(self):
-        """Recalculate the weights and return the KL divergence."""
+        "Recalculate the weights and return the KL divergence."
         ll = self.logliks()
         # calculate the new weights
         w = np.exp(ll - max(ll))
@@ -107,6 +113,7 @@ class CsiEm(object):
         return kl[np.isfinite(kl)].sum()
 
 class Csi(object):
+    "Perform CSI analysis on the provided data"
     def __init__(self, data):
         self.data = data
 
@@ -115,7 +122,9 @@ class Csi(object):
         self.Y = data.iloc[:,ix]
 
     def allParents(self, item, depth):
+        "Utility function to calculate the parental set of the given item"
         return list(parentalSets(self.data.index, item, depth))
 
     def getEm(self):
+        "For getting at a MAP estimate via expectation-maximisation."
         return CsiEm(self)
