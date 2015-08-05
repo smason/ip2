@@ -54,8 +54,7 @@ The file system used within iPlant is called *iRODS*.  It comes with
 its own set of *iCommands* for performing `ftp` like operations at the
 command line.  Alternatively there are GUI apps like iDrop and a
 `fuse` plugin available.  There are also nice Python libraries
-available for talking to iRODS servers, for example
-[python-irodsclient](https://github.com/iPlantCollaborativeOpenSource/python-irodsclient).
+available for talking to iRODS servers, for example [python-irodsclient].
 
 To connect to the iPlant servers, you need the following details:
 
@@ -72,6 +71,8 @@ These are the minimal Python libraries that would need to be installed:
     pip install numpy scipy pandas matplotlib GPy
 
 In order to run an interactive exploration in iPython, these are also
-needed:
+needed [google]:
 
     pip install ipython pyzmq jinja2 tornado jsonschema
+
+[python-irodsclient]: https://github.com/iPlantCollaborativeOpenSource/python-irodsclient
