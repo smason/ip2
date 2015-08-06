@@ -21,14 +21,15 @@ def parentalSets(items, item, depth):
     item.
     """
 
-    # exclude the target, duplicating list to avoid modifying callers
-    # state
-    l = list(items)
-    l.remove(item)
+    # exclude the target if needed
+    if item in items:
+        # duplicate list to avoid modifying callers state
+        items = list(items)
+        items.remove(item)
 
     for i in range(0, depth+1):
         # iterate over every subset of size i
-        for subset in it.combinations(l, i):
+        for subset in it.combinations(items, i):
             yield (list(subset),item)
 
 class CsiError(Exception):
