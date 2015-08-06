@@ -100,6 +100,12 @@ def main(args=None):
     if genes is None:
         logger.debug("No genes specified, assuming all")
         genes = list(inp.index)
+    else:
+        missing = np.setdiff1d(genes, inp.index)
+        if len(missing) > 0:
+            sys.stderr.write("Error: The following genes were not found: %s\n" %
+                             ", ".join(missing))
+            sys.exit(1)
 
     # start the CSI analysis
     cc = csi.Csi(inp)
