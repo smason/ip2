@@ -49,6 +49,15 @@ class CsiEm(object):
         self.hypers = sp.exp(sp.randn(3))
         self.pset = []
 
+    @property
+    def hypers(self):
+        return self._hypers
+
+    @hypers.setter
+    def hypers(self, value):
+        self._hypers   = value
+        self._updatell = True
+
     def setup(self, pset):
         "Configure model for EM using the specified parent set."
         M = []
@@ -93,11 +102,15 @@ class CsiEm(object):
         return res
 
     def logliks(self):
-        "Calculate the log-likelihood of each GP"
+        "Return the log-likelihood of each GP given the current hyperparameters"
+        if not self._updatell:
+            return self._ll
         ll = np.zeros(len(self.models))
         for i,m in enumerate(self.models):
-            m[''] = self.hypers
+            m[''] = self._hypers
             ll[i] = m.log_likelihood()
+        self._ll       = ll
+        self._updatell = False
         return ll
 
     def reweight(self):
