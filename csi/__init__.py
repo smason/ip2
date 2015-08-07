@@ -1,1 +1,2 @@
-from .csi import *
+from .csi    import *
+from .graphs import *

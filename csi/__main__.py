@@ -112,6 +112,9 @@ def main(args=None):
     # we only know how to do expectation-maximisation at the moment
     em = cc.getEm()
 
+    # structure to store
+    graph = csi.CsiGraph()
+
     for gene in genes:
         logger.info("Processing: %s", repr(gene))
 
@@ -134,6 +137,16 @@ def main(args=None):
                 [gene,em.weights[i]]+
                 em.hypers.tolist()+
                 [":".join(em.pset[i][0])])
+
+        # add all genes to our (directed) graph
+        for pset,weight in zip(em.pset,em.weights):
+            target = pset[1]
+            for regulator in pset[0]:
+                g.push(regulator,target,weight)
+
+    # truncate graph at a given level
+
+    # plot in pdf?  an interactive html page may be better!
 
 if __name__ == '__main__':
     main()
