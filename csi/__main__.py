@@ -15,6 +15,30 @@ import csi
 
 logger = logging.getLogger('CSI')
 
+class EmRes(object):
+    def __init__(self, em):
+        self.hypers  = em.hypers
+        self.weights = em.weights
+        self.pset    = em.pset
+        self.ll      = em.logliks()
+
+    def writeCsv(self, csvout):
+        for i in np.argsort(-self.ll):
+            pset    = self.pset[i]
+            weights = self.weights[i]
+            csvout.writerow(
+                [pset[1],
+                 ":".join(pset[0]),
+                 weights]+
+                self.hypers.tolist())
+
+    def getMarginalWeights(self):
+        # add all genes to our (directed) graph
+        for pset,weight in zip(self.pset,self.weights):
+            target = pset[1]
+            for regulator in pset[0]:
+                yield (regulator,target,weight)
+
 def cmdparser(args):
     op = optparse.OptionParser()
     op.set_usage("usage: %prog [options] FILE.csv")
@@ -115,6 +139,8 @@ def main(args=None):
     # we only know how to do expectation-maximisation at the moment
     em = cc.getEm()
 
+    results = []
+
     # structure to store
     graph = csi.CsiGraph()
 
@@ -134,20 +160,16 @@ def main(args=None):
 
         logger.debug("finished after %i iterations", ittr)
 
-        ll = em.logliks()
-        for i in np.argsort(-ll):
-            csvout.writerow(
-                [gene,em.weights[i]]+
-                em.hypers.tolist()+
-                [":".join(em.pset[i][0])])
+        res = EmRes(em)
+        res.writeCsv(csvout)
 
-        # add all genes to our (directed) graph
-        for pset,weight in zip(em.pset,em.weights):
-            target = pset[1]
-            for regulator in pset[0]:
-                g.push(regulator,target,weight)
+        results.append(res)
 
     # truncate graph at a given level
+    df = pd.DataFrame(res.getMarginalWeights(),
+                      columns=['reg','targ','weight'])
+    df.iloc[:,2] /= sum(df.iloc[:,2])
+    print(df.sort('weight'))
 
     # plot in pdf?  an interactive html page may be better!
 
