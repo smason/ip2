@@ -96,10 +96,13 @@ def main(args=None):
         logger.info("Time: %s",
                     ", ".join([repr(x) for x in inp.columns.levels[1]]))
 
+    # figure out which genes/rows we're going to process
     genes = op.genes
     if genes is None:
         logger.debug("No genes specified, assuming all")
         genes = list(inp.index)
+
+    # TODO: how does the user specify the parental set?
 
     # start the CSI analysis
     cc = csi.Csi(inp)
