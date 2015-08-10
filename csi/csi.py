@@ -40,6 +40,30 @@ class CsiEmFailed(CsiError):
         super(CsiEmFailed, self).__init__("Failed to optimise parameters (%s)" % [repr(res.message)])
         self.res = res
 
+class EmRes(object):
+    def __init__(self, em):
+        self.hypers  = np.copy(em.hypers)
+        self.weights = np.copy(em.weights)
+        self.pset    = em.pset
+        self.ll      = np.copy(em.logliks())
+
+    def writeCsv(self, csvout):
+        for i in np.argsort(-self.ll):
+            pset    = self.pset[i]
+            weights = self.weights[i]
+            csvout.writerow(
+                [pset[1],
+                 ":".join(pset[0]),
+                 weights]+
+                self.hypers.tolist())
+
+    def getMarginalWeights(self):
+        # add all genes to our (directed) graph
+        for pset,weight in zip(self.pset,self.weights):
+            target = pset[1]
+            for regulator in pset[0]:
+                yield (regulator,target,weight)
+
 class CsiEm(object):
     "Find MAP estimate via Expectation-Maximisation."
     def __init__(self, csi):
@@ -125,6 +149,9 @@ class CsiEm(object):
         # calculate the KL divergence
         kl = w * np.log(w / w0)
         return kl[np.isfinite(kl)].sum()
+
+    def getResults(self):
+        return EmRes(self)
 
 class Csi(object):
     "Perform CSI analysis on the provided data"
