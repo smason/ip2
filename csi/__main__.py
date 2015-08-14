@@ -77,12 +77,8 @@ def main(args=None):
     else:
         csvout = csv.writer(open(op.csvoutput,'w'))
 
-    # read in data and make sure headers are correct
-    inp = pd.read_csv(open(fname[0]),dtype=str,index_col=0,header=[0,1])
-    inp.columns = pd.MultiIndex.from_tuples([(a,float(b)) for a,b in inp.columns],
-                                            names=inp.columns.names)
-    # convert to floating point values
-    inp = inp.astype(float)
+    # load the data from disk
+    inp = csi.loadData(fname[0])
 
     # check whether the second level is sorted (currently check whether all
     # levels are sorted, need to fix!)
@@ -111,42 +107,15 @@ def main(args=None):
 
     # TODO: how does the user specify the parental set?
 
-    # start the CSI analysis
-    cc = csi.Csi(inp)
-    # we only know how to do expectation-maximisation at the moment
-    em = cc.getEm()
-
     results = []
-
-    # structure to store
-    graph = csi.CsiGraph()
-
-    for gene in genes:
-        logger.info("Processing: %s", repr(gene))
-
-        em.setup(cc.allParents(gene,depth))
-        logger.debug("optimising")
-
-        for ittr in range(1, 20):
-            em.optimiseHypers()
-            kl = em.reweight()
-            logger.debug("%2i: kl=%10.4g, hypers=%s",
-                         ittr,kl,str(em.hypers))
-            if kl < 1e-5:
-                break
-
-        logger.debug("finished after %i iterations", ittr)
-
-        res = em.getResults()
+    for res in csi.runCsiEm(inp, genes, depth):
         res.writeCsv(csvout)
-
         results.append(res)
 
     # truncate graph at a given level
     df = pd.DataFrame(list(it.chain(*[r.getMarginalWeights() for r in results])),
                       columns=['regulator','target','weight'])
-    dfm = df.groupby(["regulator","target"]).mean()
-    dfm /= dfm.groupby("target").sum()
+    dfm = df.groupby(["regulator","target"]).sum()
     print(dfm.sort('weight',ascending=False))
 
     # plot in pdf?  an interactive html page may be better!

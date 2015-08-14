@@ -1,8 +1,12 @@
 import numpy as np
 import scipy as sp
+import pandas as pd
 import GPy
 
 import itertools as it
+
+import logging
+logger = logging.getLogger('CSI')
 
 def getIndicies(x):
     """Returns indicies, [i], where item $x_i = x_{i-1}$."""
@@ -169,3 +173,36 @@ class Csi(object):
     def getEm(self):
         "For getting at a MAP estimate via expectation-maximisation."
         return CsiEm(self)
+
+def loadData(path):
+    with open(path) as fd:
+        # read in data and make sure headers are correct
+        inp = pd.read_csv(fd,dtype=str,index_col=0,header=[0,1])
+        inp.columns = pd.MultiIndex.from_tuples([(a,float(b)) for a,b in inp.columns],
+                                                names=inp.columns.names)
+        # convert to floating point values
+        return inp.astype(float)
+
+def runCsiEm(inp, genes, depth):
+    # start the CSI analysis
+    cc = Csi(inp)
+    # we only know how to do expectation-maximisation at the moment
+    em = cc.getEm()
+
+    for gene in genes:
+        logger.info("Processing: %s", repr(gene))
+
+        em.setup(cc.allParents(gene,depth))
+        logger.debug("optimising")
+
+        for ittr in range(1, 20):
+            em.optimiseHypers()
+            kl = em.reweight()
+            logger.debug("%2i: kl=%10.4g, hypers=%s",
+                         ittr,kl,str(em.hypers))
+            if kl < 1e-5:
+                break
+
+        logger.debug("finished after %i iterations", ittr)
+
+        yield em.getResults()
