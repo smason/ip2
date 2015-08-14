@@ -36,6 +36,12 @@ changes in gradient of timeseries.  http://www.plantcell.org/content/23/3/873.lo
   digital genomic footprints from DNase-seq data.
   doi:10.1093/nar/gkt850
 
+## Tools to think about ##
+
+* Dafyd's "Switch Tool" (AKA Retros, currently Matlab) (from PRESTA Project)
+
+** Regulatory Switch Model/Tool, with Giorgos
+
 Some of these projects are already written in languages compatible
 with the iPlant infrastructure, but others are based in Matlab and
 will be ported to Python and C++ for compatibility and performance.
