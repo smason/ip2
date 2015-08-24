@@ -1,9 +1,10 @@
 import numpy as np
 import scipy as sp
 import pandas as pd
-import GPy
 
 import itertools as it
+
+import csi
 
 import logging
 logger = logging.getLogger('CSI')
@@ -35,6 +36,33 @@ def parentalSets(items, item, depth):
         # iterate over every subset of size i
         for subset in it.combinations(items, i):
             yield (list(subset),item)
+
+def logexp_optimise(fn, x):
+    """Our 'LogExp' transform is taken from GPy and ensures that
+    parameters are always greater than zero.
+    """
+    def transform(x):
+        theta = logexp_to_natural(x)
+        y,grad = fn(theta)
+        # get gradients back to our space
+        grad *= logexp_gradientfactor(theta)
+        return (y,grad)
+    res = sp.optimize.minimize(transform, natural_to_logexp(x), jac=True)
+    res.x = logexp_to_natural(res.x)
+    return res
+
+def logexp_to_natural(x):
+    return np.logaddexp(0., x)
+
+def natural_to_logexp(f):
+    # wrap in np.where to stop exp() of large values overflowing and
+    # hence log giving back non-sensible values
+    return np.where(f > 36., f, np.log(np.expm1(f)))
+
+def logexp_gradientfactor(f):
+    # no point wrapping in np.where as only small values will overflow
+    # and they'll do that anyway
+    return -np.expm1(-f)
 
 class CsiError(Exception):
     pass
@@ -88,42 +116,45 @@ class CsiEm(object):
 
     def setup(self, pset):
         "Configure model for EM using the specified parent set."
-        M = []
-        for (i,j) in pset:
-            if len(i) == 0:
-                Xi = np.zeros((len(self.X),1))
-            else:
-                Xi = self.X.loc[:,i]
-            Y = self.Y.loc[:,[j]]
-            M.append(GPy.models.GPRegression(Xi, Y))
         self.pset    = pset
-        self.models  = M
-        self.weights = np.ones(len(M)) / len(M)
+        self.weights = np.ones(len(pset)) / len(pset)
+
+    def _loglik_pset(self, pset, theta):
+        i,j = pset
+        if len(i) == 0:
+            X = np.zeros((len(self.X),1))
+        else:
+            X = self.X.loc[:,i].values
+
+        return csi.rbf_likelihod_gradient(X, self.Y.loc[:,[j]].values, theta)
 
     def _optfn(self, x):
         """Return negated-loglik and gradient in a form suitable for use with
         SciPy's numeric optimisation."""
+
         ll = 0.
         grad = np.zeros(len(x))
 
         wmx = max(self.weights) * 1e-6
-        for w,m in zip(self.weights,self.models):
+        for w,pset in zip(self.weights,self.pset):
             # weights are expected to be highly correlated with
             # expected likelihood, therefore no point evaluating
             # these
             if w < wmx:
                 continue
-            m[''] = x
-            ll   += w * m.log_likelihood()
+
+            m = self._loglik_pset(pset, x)
+
+            ll   += w * m.loglik
             grad += w * m.gradient
+
         return -ll, -grad
 
     def optimiseHypers(self):
         """Re-optimise hyper-parameters of the given model, throwing exception
         on failure.
         """
-        res = sp.optimize.minimize(self._optfn, self.hypers, jac=True,
-                                   bounds=[(1e-8,None)]*len(self.hypers))
+        res = logexp_optimise(self._optfn, self.hypers)
         if not res.success:
             raise CsiEmFailed(res)
         self.hypers = res.x
@@ -133,10 +164,9 @@ class CsiEm(object):
         "Return the log-likelihood of each GP given the current hyperparameters"
         if not self._updatell:
             return self._ll
-        ll = np.zeros(len(self.models))
-        for i,m in enumerate(self.models):
-            m[''] = self._hypers
-            ll[i] = m.log_likelihood()
+        ll = np.zeros(len(self.pset))
+        for i,pset in enumerate(self.pset):
+            ll[i] = self._loglik_pset(pset, self._hypers).loglik
         self._ll       = ll
         self._updatell = False
         return ll
