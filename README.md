@@ -46,6 +46,21 @@ Some of these projects are already written in languages compatible
 with the iPlant infrastructure, but others are based in Matlab and
 will be ported to Python and C++ for compatibility and performance.
 
+# Suggestions from Users #
+
+1. Krzysztof suggested various outputs for CSI.  Cytoscape is a
+   commonly used program for displaying network graphs, SIF and EDA
+   formats would be useful.  SIF defines the graph, including nodes
+   and edges, EDA defines attributes on the edges---which is where I
+   presume the weights would go?
+
+2. Krzysztof also agreed that the web page output of CSI could be very
+   useful.  Users would want to be able to see the expression profiles
+   for selected genes (one, not sure if any more?) and be able to see
+   the graph truncated at specific weights.  Would then want to be
+   able to save/export out the data for e.g. Cytoscape.  Javascript
+   *Service Workers* should make this sort of saving posible?
+
 # TODO #
 
 # General Notes #
