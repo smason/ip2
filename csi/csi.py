@@ -184,7 +184,7 @@ class CsiEm(object):
         self.weights = w
         # calculate the KL divergence
         kl = w * np.log(w / w0)
-        return kl[np.isfinite(kl)].sum()
+        return kl.sum()
 
     def getResults(self):
         return EmRes(self)
