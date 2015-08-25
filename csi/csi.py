@@ -134,6 +134,8 @@ class CsiEm(object):
         """Return negated-loglik and gradient in a form suitable for use with
         SciPy's numeric optimisation."""
 
+        logger.debug("     optfn(theta=%s)", str(x))
+
         ll = 0.
         grad = np.zeros(len(x))
 
@@ -226,10 +228,13 @@ def runCsiEm(inp, genes, depth):
         logger.info("Processing: %s", repr(gene))
 
         em.setup(cc.allParents(gene,depth))
-        logger.debug("optimising")
 
         for ittr in range(1, 20):
+            logger.debug("%2i: optimising hyperparameters",
+                         ittr)
             em.optimiseHypers()
+            logger.debug("%2i: recalculating weights",
+                         ittr)
             kl = em.reweight()
             logger.debug("%2i: kl=%10.4g, hypers=%s",
                          ittr,kl,str(em.hypers))
