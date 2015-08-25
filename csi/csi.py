@@ -104,7 +104,6 @@ class CsiEm(object):
         self.csi = csi
         self.X = csi.X.T
         self.Y = csi.Y.T
-        self.hypers = sp.exp(sp.randn(3))
         self.pset = []
 
     @property
@@ -119,7 +118,12 @@ class CsiEm(object):
     def setup(self, pset):
         "Configure model for EM using the specified parent set."
         self.pset    = pset
-        self.weights = np.ones(len(pset)) / len(pset)
+        self.hypers  = sp.exp(sp.randn(3))
+        pl = np.array([len(a) for a,b in pset])
+        # down weight higher order parental sets
+        w = sps.gamma.rvs(np.where(pl <= 1, 0.5, 1e-5))
+        w /= np.sum(w)
+        self.weights = w
 
     def _loglik_pset(self, pset, theta):
         i,j = pset
