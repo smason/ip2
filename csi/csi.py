@@ -11,14 +11,6 @@ import csi
 import logging
 logger = logging.getLogger('CSI')
 
-def getIndicies(x):
-    """Returns indicies, [i], where item $x_i = x_{i-1}$."""
-    prev = None
-    for i, a in enumerate(x):
-        if a == prev:
-            yield i
-        prev = a
-
 def parentalSets(items, item, depth):
     """Iterate over all "Parental Sets".
 
@@ -203,9 +195,10 @@ class Csi(object):
     def __init__(self, data):
         self.data = data
 
-        ix = np.array(list(getIndicies([a for a,b in iter(data.columns)])))
-        self.X = data.iloc[:,ix-1]
-        self.Y = data.iloc[:,ix]
+        n = [a for a,b in data.columns.values]
+        ix = np.flatnonzero(np.array([a==b for a,b in zip(n, n[1:])]))
+        self.X = data.iloc[:,ix]
+        self.Y = data.iloc[:,ix+1]
 
     def allParents(self, item, depth):
         "Utility function to calculate the parental set of the given item"
