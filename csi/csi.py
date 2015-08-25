@@ -121,7 +121,7 @@ class CsiEm(object):
         self.hypers  = sp.exp(sp.randn(3))
         pl = np.array([len(a) for a,b in pset])
         # down weight higher order parental sets
-        w = sps.gamma.rvs(np.where(pl <= 1, 0.5, 1e-5))
+        w = sps.gamma.rvs(np.where(pl <= 1, 0.5, 1e-2))
         w /= np.sum(w)
         self.weights = w
 
@@ -141,7 +141,7 @@ class CsiEm(object):
         ll = 0.
         grad = np.zeros(len(x))
 
-        wmx = max(self.weights) * 1e-6
+        wmx = max(self.weights) * 1e-5
         for w,pset in zip(self.weights,self.pset):
             # weights are expected to be highly correlated with
             # expected likelihood, therefore no point evaluating
