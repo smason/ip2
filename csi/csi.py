@@ -109,17 +109,16 @@ class CsiEm(object):
 
     def setup(self, pset):
         "Configure model for EM using the specified parent set."
-        self.pset    = pset
-        t = np.array(inp.columns.levels[1])
-        self.hypers = np.array([
-            np.median(np.array(self.csi.data)),
-            np.median(a[2::2] - a[:-2:2]),
-            1
-        ])**2
+        # want to start with mostly singleton parental sets, so start
+        # by calculating parental set sizes
         pl = np.array([len(a) for a,b in pset])
-        # down weight higher order parental sets
-        w = sps.gamma.rvs(np.where(pl <= 1, 0.5, 1e-2))
+        # down-weight higher order parental sets
+        w = sps.gamma.rvs(np.where(pl > 1, 1e-2, 0.5))
+        # normalise weights to sum to one
         w /= np.sum(w)
+
+        self.pset = pset
+        self.hypers = sp.exp(sp.randn(3))
         self.weights = w
 
     def _loglik_pset(self, pset, theta):
