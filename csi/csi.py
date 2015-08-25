@@ -1,5 +1,7 @@
 import numpy as np
 import scipy as sp
+import scipy.optimize as spo
+import scipy.stats as sps
 import pandas as pd
 
 import itertools as it
@@ -47,7 +49,7 @@ def logexp_optimise(fn, x):
         # get gradients back to our space
         grad *= logexp_gradientfactor(theta)
         return (y,grad)
-    res = sp.optimize.minimize(transform, natural_to_logexp(x), jac=True)
+    res = spo.minimize(transform, natural_to_logexp(x), jac=True)
     res.x = logexp_to_natural(res.x)
     return res
 
