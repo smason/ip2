@@ -11,6 +11,23 @@ while the second row the 21 evenly spaced X values for the timeseries.
 The first column contains the 10 gene names and the remaining 10 by
 (21*5) cells contain the data values.
 
+# Displaying Results Interactively #
+
+1. Graph/Network of Nodes and Edges
+
+  1. Nodes are genes, what about colour?  Hovering over a node
+     displays gene name, clicking on it display a plot of the raw
+     data.
+
+  2. Edges display marginal likelihoods of causal relationship, line
+     thickness indicates strength.  Clicking on a edge could show
+     the associated parental sets and weights
+
+2. Plot of 
+
+
+
+
 # From Chris #
 
 ## Parental Sets ##
