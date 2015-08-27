@@ -11,23 +11,6 @@ while the second row the 21 evenly spaced X values for the timeseries.
 The first column contains the 10 gene names and the remaining 10 by
 (21*5) cells contain the data values.
 
-# Displaying Results Interactively #
-
-1. Graph/Network of Nodes and Edges
-
-  1. Nodes are genes, what about colour?  Hovering over a node
-     displays gene name, clicking on it display a plot of the raw
-     data.
-
-  2. Edges display marginal likelihoods of causal relationship, line
-     thickness indicates strength.  Clicking on a edge could show
-     the associated parental sets and weights
-
-2. Plot of 
-
-
-
-
 # From Chris #
 
 ## Parental Sets ##
@@ -36,6 +19,47 @@ Calculation of parental sets should probably be done outside of the
 "main" CSI code—maybe in user friendly calling part.  Use case is to
 optimise hyperparameters using a smaller set (i.e. truncate at two
 parents) then run full algorithm with larger set (i.e. three parents).
+
+# Displaying Results Interactively #
+
+## Visual Elements ##
+
+1. Graph/Network of genes as nodes and edges marginal likelihood over
+   parental sets.  Hovering over nodes displays name, edge line weight
+   proportional to marginals.
+
+2. Plots of raw data; selected node black, genes having a casual
+   effect on selected gene in one colour and genes our node has a
+   causal effect on in another colour.  Line weight proportional to
+   marginal likelihood.
+
+3. A table of genes: name, number child and parent genes at current
+   cutoff
+
+4. Table of parental sets for a selected gene, highlighted by cutoff
+
+5. Slider for cutoff on marginal likelihoods of parental sets.
+
+6. Menubar for setting options, exporting data
+
+## User Stories ##
+
+I want to…
+
+1. get a general idea of the network structure while easily cutting
+   the graph at different marginals (uses: graph and cutoff)
+
+2. make sure that CSI is "doing the right thing" by looking at
+   expression profiles and comparing them to their parental sets (uses
+   graph and plots)
+
+3. look at my genes of interest and explore the network near them
+   (uses graph and something else)
+
+4. use Cytoscape to look at the network cut as appropriate.  I want
+   the graph in a .SIF file and the edges in a .EDA file.
+
+5. 
 
 # Files #
 
