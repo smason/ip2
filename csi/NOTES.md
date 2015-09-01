@@ -59,7 +59,7 @@ I want to…
 4. use Cytoscape to look at the network cut as appropriate.  I want
    the graph in a .SIF file and the edges in a .EDA file.
 
-5. 
+5. get citation information
 
 # Files #
 
