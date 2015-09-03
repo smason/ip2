@@ -216,6 +216,24 @@ class Csi(object):
         "For getting at a MAP estimate via expectation-maximisation."
         return CsiEm(self)
 
+    def to_json_dom(self, res):
+        def c1(tup):
+            a,(b,c) = tup
+            return b
+        def mkpair(a,l):
+            l = list(l)
+            i = [i for i,_ in l]
+            v = [v for _,(_,v) in l]
+            return (a,i,v)
+
+        reps = [mkpair(a,b) for a,b in it.groupby(enumerate(self.data.columns),c1)]
+        data = [[self.data.iloc[i,b].values.tolist() for a,b,c in reps]
+                for i in range(self.data.shape[0])]
+
+        return dict(replicates=[dict(id=a,time=c) for a,b,c in reps],
+                    items=[dict(id=name) for name in self.data.index],
+                    data=data)
+
 def loadData(path):
     with open(path) as fd:
         # read in data and make sure headers are correct

@@ -28,8 +28,10 @@ def cmdparser(args):
                   help="Increase verbosity (specify twice for more detail)")
     op.add_option('-o','--csvoutput',dest='csvoutput',
                   help="write CSV output to FILE", metavar='FILE')
-    op.add_option('-p','--pdfoutput',dest='pdfoutput',
+    op.add_option('-p','--pdf',dest='pdfoutput',
                   help="write PDF output to FILE", metavar='FILE')
+    op.add_option('--json',dest='jsonoutput',
+                  help="write JSON output to FILE", metavar='FILE')
     op.add_option('-d', '--depth',dest='depth',type='int',action='store',
                   help="Truncation depth for parental set")
     op.add_option('--gene',dest='genes',action='append',
@@ -83,6 +85,11 @@ def main(args=None):
         csvout = csv.writer(sys.stdout)
     else:
         csvout = csv.writer(open(op.csvoutput,'w'))
+
+    if op.jsonoutput:
+        jsonoutput = open(op.jsonoutput,'w')
+    else:
+        jsonoutput = None
 
     # load the data from disk
     inp = csi.loadData(fname[0])
