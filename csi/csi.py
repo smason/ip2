@@ -142,12 +142,10 @@ class CsiEm(object):
 
     def _loglik_pset(self, pset, theta):
         i,j = pset
-        if len(i) == 0:
-            X = np.zeros((len(self.X),1))
-        else:
-            X = self.X.loc[:,i].values
+        X = self.X.loc[:,[j]+i].values
+        Y = self.Y.loc[:,[j]].values
 
-        return csi.rbf_likelihod_gradient(X, self.Y.loc[:,[j]].values, theta)
+        return csi.rbf_likelihod_gradient(X, Y, theta)
 
     def _optfn(self, x):
         """Return negated-loglik and gradient in a form suitable for use with
