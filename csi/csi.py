@@ -156,7 +156,7 @@ class CsiEm(object):
         ll = 0.
         grad = np.zeros(len(x))
 
-        wmx = max(self.weights) * 1e-5
+        wmx = max(self.weights) * self.weighttrunc
         for w,pset in zip(self.weights,self.pset):
             # weights are expected to be highly correlated with
             # expected likelihood, therefore no point evaluating
@@ -168,6 +168,8 @@ class CsiEm(object):
 
             ll   += w * m.loglik
             grad += w * m.gradient
+
+        logger.debug("       optfn=%g", ll)
 
         return -ll, -grad
 
