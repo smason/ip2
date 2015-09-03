@@ -66,7 +66,11 @@ class CsiEmFailed(CsiError):
         super(CsiEmFailed, self).__init__("Failed to optimise parameters (%s)" % [repr(res.message)])
         self.res = res
 
-class EmRes(object):
+class CsiResult(object):
+    def to_json_dom(self):
+        raise NotImplementedError
+
+class EmRes(CsiResult):
     def __init__(self, em):
         self.hypers  = np.copy(em.hypers)
         self.weights = np.copy(em.weights)
@@ -89,6 +93,14 @@ class EmRes(object):
             target = pset[1]
             for regulator in pset[0]:
                 yield (regulator,target,weight)
+
+    def to_json_dom(self):
+        return dict(restype="EM",
+                    item=self.pset[0][1],
+                    hyperparams=self.hypers.tolist(),
+                    weights=self.weights.tolist(),
+                    loglik=self.ll.tolist(),
+                    parents=[a for (a,_) in self.pset])
 
 class CsiEm(object):
     "Find MAP estimate via Expectation-Maximisation."
@@ -217,6 +229,7 @@ class Csi(object):
         return CsiEm(self)
 
     def to_json_dom(self, res):
+        "@res is a list of objects derived from CsiResult's"
         def c1(tup):
             a,(b,c) = tup
             return b
@@ -232,7 +245,8 @@ class Csi(object):
 
         return dict(replicates=[dict(id=a,time=c) for a,b,c in reps],
                     items=[dict(id=name) for name in self.data.index],
-                    data=data)
+                    data=data,
+                    results=[r.to_json_dom() for r in res])
 
 def loadData(path):
     with open(path) as fd:
