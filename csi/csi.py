@@ -257,11 +257,11 @@ def loadData(path):
         # convert to floating point values
         return inp.astype(float)
 
-def runCsiEm(em, genes, depth):
+def runCsiEm(em, genes, fnpset):
     for gene in genes:
         logger.info("Processing: %s", repr(gene))
 
-        em.setup(cc.allParents(gene,depth))
+        em.setup(fnpset(gene))
 
         for ittr in range(1, 20):
             logger.debug("%2i: optimising hyperparameters",

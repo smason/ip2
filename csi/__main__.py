@@ -5,6 +5,7 @@ import optparse
 import csv
 import re
 import itertools as it
+import json
 
 import logging
 
@@ -135,7 +136,7 @@ def main(args=None):
 
         em.weightrunc = val
 
-    if 'initweights' in op:
+    if op.initweights:
         if op.initweights == 'uniform':
             em.sampleinitweights = False
         elif op.initweights == 'weighted':
@@ -146,9 +147,12 @@ def main(args=None):
             sys.exit(1)
 
     results = []
-    for res in csi.runCsiEm(em, genes, depth):
+    for res in csi.runCsiEm(em, genes, lambda gene: cc.allParents(gene,depth)):
         res.writeCsv(csvout)
         results.append(res)
+
+    if jsonoutput is not None:
+        json.dump(cc.to_json_dom(results), jsonoutput)
 
     # truncate graph at a given level
     df = pd.DataFrame(list(it.chain(*[r.getMarginalWeights() for r in results])),
