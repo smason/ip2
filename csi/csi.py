@@ -171,6 +171,8 @@ class CsiEm(object):
             ll   += w * m.loglik
             grad += w * m.gradient
 
+        logger.debug("       optfn=%g", ll)
+
         return -ll, -grad
 
     def optimiseHypers(self):
