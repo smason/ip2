@@ -18,32 +18,44 @@ import csi
 logger = logging.getLogger('CSI')
 
 def cmdparser(args):
+    # create parser objects
     op = optparse.OptionParser()
+    out = optparse.OptionGroup(op, "Output Formats")
+    compat = optparse.OptionGroup(op, "Compatibility Options")
+
     op.set_usage("usage: %prog [options] FILE.csv")
     op.set_defaults(
         verbose=False,
         normalise=True,
         depth=2,
         depgenes=[])
+
+    # define general parameters
     op.add_option('-v','--verbose',dest='verbose',action='count',
                   help="Increase verbosity (specify twice for more detail)")
-    op.add_option('-o','--csvoutput',dest='csvoutput',
-                  help="write CSV output to FILE", metavar='FILE')
-    op.add_option('-p','--pdf',dest='pdfoutput',
-                  help="write PDF output to FILE", metavar='FILE')
-    op.add_option('--json',dest='jsonoutput',
-                  help="write JSON output to FILE", metavar='FILE')
-    op.add_option('-d', '--depth',dest='depth',type='int',action='store',
-                  help="Truncation depth for parental set")
-    op.add_option('--gene',dest='genes',action='append',
-                  help="Specific gene to analyse (specify again for more than one)")
-    compat = optparse.OptionGroup(op, "Compatibility Options")
-    compat.add_option('--weighttrunc',type='float', metavar='TRUNC',
-                      help="Don't evaluate likelihoods whose weight is less than TRUNC")
+    op.add_option('-d', '--depth',dest='depth',type='int',metavar='D',
+                  help="Truncate parental set at depth D")
+    op.add_option('--gene',dest='genes',action='append',metavar='GENE',
+                  help="Limit analysis to a specific gene (repeat for more than one)")
+
+    # define output parameters
+    op.add_option_group(out)
+    out.add_option('-o','--csv',dest='csvoutput',
+                   help="write CSV output to FILE", metavar='FILE')
+    out.add_option('--pdf',dest='pdfoutput',
+                   help="write PDF output to FILE", metavar='FILE')
+    out.add_option('--json',dest='jsonoutput',
+                   help="write JSON output to FILE", metavar='FILE')
+
+    # define compatibility options
+    op.add_option_group(compat)
+    compat.add_option('--weighttrunc',type='float', metavar='V',
+                      help="Don't evaluate likelihoods whose weight is less than V")
     compat.add_option('--initweights',type='choice',metavar='TYPE',
                       choices=['uniform','weighted'],
                       help="Initialise weights as either 'uniform' or 'weighted'")
-    op.add_option_group(compat)
+
+    # parse our command line arguments
     return op.parse_args(args)
 
 def main(args=None):
