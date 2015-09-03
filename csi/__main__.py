@@ -34,6 +34,13 @@ def cmdparser(args):
                   help="Truncation depth for parental set")
     op.add_option('--gene',dest='genes',action='append',
                   help="Specific gene to analyse (specify again for more than one)")
+    compat = optparse.OptionGroup(op, "Compatibility Options")
+    compat.add_option('--weighttrunc',type='float', metavar='TRUNC',
+                      help="Don't evaluate likelihoods whose weight is less than TRUNC")
+    compat.add_option('--initweights',type='choice',metavar='TYPE',
+                      choices=['uniform','weighted'],
+                      help="Initialise weights as either 'uniform' or 'weighted'")
+    op.add_option_group(compat)
     return op.parse_args(args)
 
 def main(args=None):
@@ -102,20 +109,44 @@ def main(args=None):
         missing = np.setdiff1d(genes, inp.index)
         if len(missing) > 0:
             sys.stderr.write("Error: The following genes were not found: %s\n" %
-                             ", ".join(missing))
+                             ', '.join(missing))
             sys.exit(1)
 
     # TODO: how does the user specify the parental set?
 
+    cc = csi.Csi(inp)
+    em = cc.getEm()
+
+    if op.weighttrunc:
+        val = float(op.weightrunc)
+        if 0 < val < 1:
+            sys.stderr.write("Error: The weight truncation must be between zero and one\n")
+            sys.exit(1)
+
+        if val > 0.01:
+            logger.warning("weight truncation should probably be less than 0.01")
+
+        em.weightrunc = val
+
+    if 'initweights' in op:
+        if op.initweights == 'uniform':
+            em.sampleinitweights = False
+        elif op.initweights == 'weighted':
+            em.sampleinitweights = True
+        else:
+            sys.stderr.write("Error: Unrecognised initial weight mode: %s\n" %
+                             op.initweights)
+            sys.exit(1)
+
     results = []
-    for res in csi.runCsiEm(inp, genes, depth):
+    for res in csi.runCsiEm(em, genes, depth):
         res.writeCsv(csvout)
         results.append(res)
 
     # truncate graph at a given level
     df = pd.DataFrame(list(it.chain(*[r.getMarginalWeights() for r in results])),
                       columns=['regulator','target','weight'])
-    dfm = df.groupby(["regulator","target"]).sum()
+    dfm = df.groupby(['regulator','target']).sum()
     print(dfm.sort('weight',ascending=False))
 
     # plot in pdf?  an interactive html page may be better!

@@ -97,6 +97,8 @@ class CsiEm(object):
         self.X = csi.X.T
         self.Y = csi.Y.T
         self.pset = []
+        self.weighttrunc = 1e-5
+        self.sampleinitweights = True
 
     @property
     def hypers(self):
@@ -109,13 +111,18 @@ class CsiEm(object):
 
     def setup(self, pset):
         "Configure model for EM using the specified parent set."
-        # want to start with mostly singleton parental sets, so start
-        # by calculating parental set sizes
-        pl = np.array([len(a) for a,b in pset])
-        # down-weight higher order parental sets
-        w = sps.gamma.rvs(np.where(pl > 1, 1e-2, 0.5))
-        # normalise weights to sum to one
-        w /= np.sum(w)
+
+        if self.sampleinitweights:
+            # want to start with mostly singleton parental sets, so start
+            # by calculating parental set sizes
+            pl = np.array([len(a) for a,b in pset])
+            # down-weight higher order parental sets
+            w = sps.gamma.rvs(np.where(pl > 1, 1e-2, 0.5))
+            # normalise weights to sum to one
+            w /= np.sum(w)
+        else:
+            # all weights are equal
+            w = np.ones(len(pset)) / len(pset)
 
         self.pset = pset
         self.hypers = sp.exp(sp.randn(3))
@@ -218,12 +225,7 @@ def loadData(path):
         # convert to floating point values
         return inp.astype(float)
 
-def runCsiEm(inp, genes, depth):
-    # start the CSI analysis
-    cc = Csi(inp)
-    # we only know how to do expectation-maximisation at the moment
-    em = cc.getEm()
-
+def runCsiEm(em, genes, depth):
     for gene in genes:
         logger.info("Processing: %s", repr(gene))
 
