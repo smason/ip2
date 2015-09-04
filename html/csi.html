@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en" ng-app="CsiResults">
+  <head>
+    <meta charset="utf-8">
+    <title>CSI Results Analysis</title>
+    <link rel="stylesheet" href="css/pure-min.css">
+    <link rel="stylesheet" href="csi.css">
+    
+    <script type="text/javascript" src="angular.js"></script>
+    <script type="text/javascript" src="d3.js"></script>
+    
+    <script type="text/javascript" src="csi.js"></script>
+    <script type="text/javascript" src="dream.json"></script>
+  </head>
+  <body>
+    <div id="header">
+      <div class="pure-menu pure-menu-horizontal">
+	<ul class="pure-menu-list">
+          <li class="pure-menu-item pure-menu-has-children pure-menu-allow-hover">
+            <a href="#" id="menuFile" class="pure-menu-link">File</a>
+            <ul class="pure-menu-children">
+	      <li class="pure-menu-item"><a href="#" class="pure-menu-link">Export to Cytoscape</a></li>
+            </ul>
+          </li>
+          <li class="pure-menu-item pure-menu-has-children pure-menu-allow-hover">
+            <a href="#" id="menuFile" class="pure-menu-link">Mode</a>
+            <ul class="pure-menu-children">
+	      <li class="pure-menu-item"><a href="#" class="pure-menu-link">Marginal Network</a></li>
+	      <li class="pure-menu-item"><a href="#" class="pure-menu-link">MAP Network</a></li>
+            </ul>
+          </li>
+	  <li class="pure-menu-item"><a href="#" class="pure-menu-link">Citation</a></li>
+	</ul>
+      </div>
+    </div>
+
+    <div id="main">
+      <div id="data-items" ng-controller="DataItems">
+	<div id="data-item" ng-repeat="item in items | orderBy : 'ord'">
+	  <input type="checkbox" ng-model="item.selected"> {{item.name}}
+	</div>
+      </div><div id="graphpset"><div id="graph" ng-controller="NetworkGraph">
+	</div><div id="parental-set" ng-controller="ParentalSets">
+	  <table class="pure-table" style="display: inline-block; vertical-align: top;">
+	    <thead>
+	      <tr>
+		<td>Item</td>
+		<td>Parental Set</td>
+		<td>Weight</td>
+	      </tr>
+	    </thead>
+	    <tbody>
+	      <tr ng-repeat="pset in parentalsets | ParentalSetFilter : weightthresh | orderBy : ['item.ord','-weight']">
+		<td>{{pset.item.name}}</td>
+		<td>{{pset.parents | parents}}</td>
+		<td>{{pset.weight | weight}}</td>
+	      </tr>
+	    </tbody>
+	  </table>
+	  Minimum Weight: <input type="number" min="0.0", max="1.0" step="0.1" ng-model="weightthresh">
+      </div></div><div id="data">
+	Expression Data
+      </div>
+    </div>
+    <div id="footer">
+      CSI Analysis Footer
+    </div>
+  </body>
+</html>

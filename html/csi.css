@@ -1,0 +1,27 @@
+#data-items, #graphpset, #graph, #parental-set, #data {
+    vertical-align: top;
+}
+#data-items, #graphpset {
+    display: inline-block;
+}
+#data-items {
+    width: 8rem;
+    height: 50rem;
+}
+#data-item {
+    padding-left: 5px;
+}
+#graphpset {
+    width: calc(100% - 8rem);
+    height: 50rem;
+}
+#graph {
+    height: 35rem;
+}
+#parental-set {
+    max-height: 15rem;
+    overflow-y:scroll;
+}
+#data {
+    min-height: 20rem;
+}
