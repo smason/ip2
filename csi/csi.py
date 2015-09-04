@@ -83,7 +83,7 @@ class EmRes(CsiResult):
             weights = self.weights[i]
             csvout.writerow(
                 [pset[1],
-                 ":".join(pset[0]),
+                 ':'.join(pset[0]),
                  weights]+
                 self.hypers.tolist())
 
