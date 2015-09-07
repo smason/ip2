@@ -12,6 +12,39 @@ app.factory('Items', function () {
     return items;
 });
 
+app.factory('ParentalSets', function (Items) {
+    var psets = [];
+    angular.forEach(csires.results, function(res) {
+	angular.forEach(res.parents, function(parent,j) {
+	    item = Items[res.item];
+	    psets.push({
+		item    : item,
+		parents : parent,
+		weight  : res.weights[j],
+		loglik  : res.loglik[j]})
+	})
+    });
+    return psets;
+});
+
+app.factory('MarginalParents', function(Items, ParentalSets) {
+    var	mpars = {};
+    angular.forEach(ParentalSets, function(pset) {
+	angular.forEach(pset.parents, function(pit) {
+	    var key = [pit,pset.item.id];
+	    if(key in mpars) {
+		mpars[key].loglik += pset.weight;
+	    } else {
+		mpars[key] = {
+		    item   : pset.item,
+		    parent : Items[pit],
+		    loglik : pset.weight};
+	    }
+	});
+    });
+    return mpars;
+});
+
 app.filter('weight', function() {
     return function(w) {
 	return w.toPrecision(3);
@@ -24,7 +57,7 @@ app.filter('parents', function() {
     }
 });
 
-app.controller('DataItems', function($scope, Items) {
+app.controller('ItemController', function($scope, Items) {
     $scope.items = Items;
 })
 
@@ -39,23 +72,14 @@ app.filter('ParentalSetFilter', function() {
     };
 });
 
-app.controller('ParentalSets', function($scope, Items) {
-    $scope.Items = Items;
-
-    var psets = [];
-    angular.forEach(csires.results, function(res) {
-	angular.forEach(res.parents, function(parent,j) {
-	    item = Items[res.item];
-	    psets.push({item:item, parents:parent,
-			weight:res.weights[j], loglik:res.loglik[j]})
-	})
-    });
-    $scope.parentalsets = psets;
+app.controller('ParentalSetController', function($scope, Items, ParentalSets) {
+    $scope.Items        = Items;
+    $scope.ParentalSets = ParentalSets;
     $scope.weightthresh = 0.1;
 })
 
 
-app.controller('NetworkGraph', function($scope, $rootScope, Items) {
+app.controller('NetworkController', function($scope, $rootScope, Items, MarginalParents) {
     var parent = d3.select("#graph");
 
     var width  = parent.node().clientWidth,
@@ -69,8 +93,23 @@ app.controller('NetworkGraph', function($scope, $rootScope, Items) {
     var svg = parent
         .attr("tabindex", 1)
         .append("svg")
-        .attr("width", width)
-        .attr("height", height);
+          .attr("width", width)
+          .attr("height", height);
+
+    // build the arrow.
+    svg.append("svg:defs").selectAll("marker")
+      .data(["end"])      // Different link/path types can be defined here
+    .enter().append("svg:marker")    // This section adds in the arrows
+      .attr("id", String)
+      .attr("viewBox", "0 -5 10 10")
+      .attr("refX", 15)
+      .attr("refY", -1)
+      .attr("markerWidth", 6)
+      .attr("markerHeight", 6)
+      .attr("orient", "auto")
+    .append("svg:path")
+	.attr("d", "M0,-5L10,0L0,5")
+	.style("fill","#f35");
 
     var borderPath = svg.append("rect")
         .attr("x", 0)
@@ -81,59 +120,108 @@ app.controller('NetworkGraph', function($scope, $rootScope, Items) {
         .style("fill", "none")
         .style("stroke-width", 1);
 
-    var items = [];
+    var items = [], edges = [];
     angular.forEach(Items, function(item) {
-	items.push({ item: item })
+	var it = {
+	    item: item,
+	    selected: function() {
+		return item.selected;
+	    }
+	};
+	items.push(it)
+	item.node = it;
+    })
+
+    angular.forEach(MarginalParents, function(mp) {
+	var pn = mp.parent.node,
+	    tn = mp.item.node;
+	edges.push({
+	    source: pn,
+	    target: tn,
+	    mpar: mp,
+	    selected: function() {
+		return pn.item.selected && tn.item.selected && mp.loglik > 0.1;
+	    },
+	})
     })
 
     var selectedItems = function() {
 	var out = [];
 	angular.forEach(items, function(it) {
-	    if (it.item.selected)
+	    if (it.selected())
 		out.push(it);
 	})
 	return out;
-    }
+    };
+
+    var selectedEdges = function() {
+	var out = [];
+	angular.forEach(edges, function(it) {
+	    if (it.selected())
+		out.push(it);
+	})
+	return out;
+    };
 
     var force = d3.layout.force()
-        .charge(-120)
-        .linkDistance(30)
-        .nodes(selectedItems())
-        .links([])
-        .size([width, height])
-        .start();
+        .charge(-1000)
+        .linkDistance(function(l) { return 100 / (0.1+l.mpar.loglik); })
+	.linkStrength(function(l) { return 1 });
 
     var vis = svg.append("svg:g");
 
-    var link = vis.append("g")
+    var links = vis.append("g")
         .attr("class", "link")
-        .selectAll();
+	.selectAll()
+        .data(edges).enter().append("path")
+        .attr("marker-end", "url(#end)")
+        .style("stroke", 'black')
+	.style("fill", 'transparent')
+        .style("stroke-width", function(l) { return 2 * l.mpar.loglik; });
 
     var nodes = vis.append("g")
 	.attr("class", "node")
 	.selectAll()
 	.data(items)
 	.enter().append("circle")
-	.attr("r", 4);
+	  .attr("r", 4);
 
     force.on("tick", function () {
-        link.attr("x1", function(l) { return l.source.x; })
-            .attr("y1", function(l) { return l.source.y; })
-            .attr("x2", function(l) { return l.target.x; })
-            .attr("y2", function(l) { return l.target.y; });
+        links.attr("d", function(d) {
+            var dx = d.target.x - d.source.x,
+                dy = d.target.y - d.source.y,
+                dr = Math.sqrt(500+dx * dx + dy * dy)*2;
+            return "M" +
+                d.source.x + "," +
+                d.source.y + "A" +
+                dr + "," + dr + " 0 0,1 " +
+                d.target.x + "," +
+                d.target.y;
+        });
 
         nodes
 	    .attr('cx', function(n) { return n.x; })
             .attr('cy', function(n) { return n.y; });
     });
 
-    var unbind = $rootScope.$on('itemchanged', function(event) {
+    var	runWithIt = function () {
 	nodes.style('visibility', function(n) {
-	    return n.item.selected ? 'visible' : 'hidden';
+	    return n.selected() ? 'visible' : 'hidden';
 	});
 
-	force.nodes(selectedItems());
-	force.start();
-    });
+	links.style('visibility', function(l) {
+	    return l.selected() ? 'visible' : 'hidden';
+	});
+
+	force
+            .nodes(selectedItems())
+            .links(selectedEdges())
+            .size([width, height])
+            .start();
+    };
+
+    var unbind = $rootScope.$on('itemchanged', runWithIt);
     $scope.$on('$destroy', unbind);
+
+    runWithIt();
 })
