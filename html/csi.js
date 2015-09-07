@@ -78,7 +78,6 @@ app.controller('ParentalSetController', function($scope, Items, ParentalSets) {
     $scope.weightthresh = 0.1;
 })
 
-
 app.controller('NetworkController', function($scope, $rootScope, Items, MarginalParents) {
     var parent = d3.select("#graph");
 
@@ -103,7 +102,7 @@ app.controller('NetworkController', function($scope, $rootScope, Items, Marginal
       .attr("id", String)
       .attr("viewBox", "0 -5 10 10")
       .attr("refX", 15)
-      .attr("refY", -1)
+      .attr("refY", 0)
       .attr("markerWidth", 6)
       .attr("markerHeight", 6)
       .attr("orient", "auto")
@@ -164,11 +163,11 @@ app.controller('NetworkController', function($scope, $rootScope, Items, Marginal
     };
 
     var force = d3.layout.force()
-        .charge(-1000)
+        .charge(-500)
         .linkDistance(function(l) { return 100 / (0.1+l.mpar.loglik); })
-	.linkStrength(function(l) { return 1 });
+	.linkStrength(function(l) { return l.mpar.loglik });
 
-    var vis = svg.append("svg:g");
+    var vis = svg.append("g");
 
     var links = vis.append("g")
         .attr("class", "link")
@@ -189,8 +188,8 @@ app.controller('NetworkController', function($scope, $rootScope, Items, Marginal
     force.on("tick", function () {
         links.attr("d", function(d) {
             var dx = d.target.x - d.source.x,
-                dy = d.target.y - d.source.y,
-                dr = Math.sqrt(500+dx * dx + dy * dy)*2;
+		dy = d.target.y - d.source.y,
+                dr = Math.sqrt(400+dx * dx + dy * dy)*2;
             return "M" +
                 d.source.x + "," +
                 d.source.y + "A" +
@@ -205,13 +204,9 @@ app.controller('NetworkController', function($scope, $rootScope, Items, Marginal
     });
 
     var	runWithIt = function () {
-	nodes.style('visibility', function(n) {
-	    return n.selected() ? 'visible' : 'hidden';
-	});
-
-	links.style('visibility', function(l) {
-	    return l.selected() ? 'visible' : 'hidden';
-	});
+	// show/hide the nodes and edges as appropriate
+	nodes.style('visibility', function(n) { return n.selected() ? 'visible' : 'hidden'; });
+	links.style('visibility', function(l) { return l.selected() ? 'visible' : 'hidden'; });
 
 	force
             .nodes(selectedItems())
@@ -224,4 +219,108 @@ app.controller('NetworkController', function($scope, $rootScope, Items, Marginal
     $scope.$on('$destroy', unbind);
 
     runWithIt();
+})
+
+
+app.controller('ExpressionController', function($scope, Items, MarginalParents) {
+    var parent = d3.select("#data");
+
+    var margin = {top: 0, right: 50, bottom: 20, left: 40},
+	cwidth  = parent.node().clientWidth,  width  = cwidth - margin.left - margin.right,
+	cheight = parent.node().clientHeight, height = cheight - margin.top - margin.bottom;
+
+    var rangeScale = function (r, m) {
+	var d = (r[1] - r[0]) * m;
+	return [r[0] - d, r[1] + d]
+    }
+
+
+    var xRange = rangeScale([0, width],-0.02),
+	x = d3.scale.linear()
+	.range(xRange);
+
+    var yRange = rangeScale([height, 0],-0.04),
+	y = d3.scale.linear()
+	.range(yRange);
+
+    var color = d3.scale.category10();
+
+    var xAxis = d3.svg.axis()
+	.scale(x)
+	.orient("bottom");
+
+    var yAxis = d3.svg.axis()
+	.scale(y)
+	.orient("left");
+
+    var svg = parent
+        .attr("tabindex", 2)
+        .append("svg")
+          .attr("width", cwidth)
+          .attr("height", cheight)
+	.append("g")
+	  .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    data = [];
+
+    it = Items["Gene1"].data
+    angular.forEach(csires.replicates, function(r, i) {
+	angular.forEach(r.time, function(t,j) {
+	    data.push({rep:r.id,x:t,y:it[i][j]})
+	});
+    });
+
+    x.domain(d3.extent(data, function(d) { return d.x; }));
+    y.domain(d3.extent(data, function(d) { return d.y; }));
+
+    svg.append("g")
+	.attr("class", "x axis")
+	.attr("transform", "translate(0," + height + ")")
+      .call(xAxis)
+	.append("text")
+	.attr("class", "label")
+	.attr("x", xRange[1])
+	.attr("y", -2)
+	.style("text-anchor", "end")
+	.text("Time");
+
+    svg.append("g")
+	.attr("class", "y axis")
+	.call(yAxis)
+      .append("text")
+	.attr("class", "label")
+	.attr("transform", "rotate(-90)")
+	.attr("x", -yRange[1])
+	.attr("y", 4)
+	.attr("dy", ".71em")
+	.style("text-anchor", "end")
+	.text("Expression")
+
+    svg.selectAll(".dot")
+	  .data(data)
+	.enter().append("circle")
+	  .attr("class", "dot")
+	  .attr("r", 3)
+	  .attr("cx", function(d) { return x(d.x); })
+	  .attr("cy", function(d) { return y(d.y); })
+	  .attr("fill", function(d) { return color(d.rep); });
+
+    var legend = svg.selectAll(".legend")
+	.data(color.domain())
+      .enter().append("g")
+	.attr("class", "legend")
+	.attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+    legend.append("rect")
+	.attr("x", width)
+	.attr("width", 18)
+	.attr("height", 18)
+	.style("fill", color);
+
+    legend.append("text")
+	.attr("x", width+24)
+	.attr("y", 9)
+	.attr("dy", ".35em")
+	.style("text-anchor", "start")
+	.text(function(d) { return d; });
 })
