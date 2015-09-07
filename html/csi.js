@@ -26,10 +26,6 @@ app.filter('parents', function() {
 
 app.controller('DataItems', function($scope, Items) {
     $scope.items = Items;
-
-    $scope.$on('itemchanged', function() {
-	console.log('hello world');
-    });
 })
 
 app.filter('ParentalSetFilter', function() {
@@ -59,12 +55,7 @@ app.controller('ParentalSets', function($scope, Items) {
 })
 
 
-app.controller('NetworkGraph', function($scope, Items) {
-    $scope.$on('itemchanged', function(event) {
-	console.log('got item changed')
-	console.log(event)
-    });
-
+app.controller('NetworkGraph', function($scope, $rootScope, Items) {
     var parent = d3.select("#graph");
 
     var width  = parent.node().clientWidth,
@@ -95,10 +86,19 @@ app.controller('NetworkGraph', function($scope, Items) {
 	items.push({ item: item })
     })
 
+    var selectedItems = function() {
+	var out = [];
+	angular.forEach(items, function(it) {
+	    if (it.item.selected)
+		out.push(it);
+	})
+	return out;
+    }
+
     var force = d3.layout.force()
         .charge(-120)
         .linkDistance(30)
-        .nodes(items)
+        .nodes(selectedItems())
         .links([])
         .size([width, height])
         .start();
@@ -109,13 +109,11 @@ app.controller('NetworkGraph', function($scope, Items) {
         .attr("class", "link")
         .selectAll();
 
-    var node = vis.append("g")
-        .attr("class", "node")
-        .selectAll()
-	.data(items, function(i) {return i.item.ord; });
-
-    node.enter()
-	.append("circle")
+    var nodes = vis.append("g")
+	.attr("class", "node")
+	.selectAll()
+	.data(items)
+	.enter().append("circle")
 	.attr("r", 4);
 
     force.on("tick", function () {
@@ -124,7 +122,18 @@ app.controller('NetworkGraph', function($scope, Items) {
             .attr("x2", function(l) { return l.target.x; })
             .attr("y2", function(l) { return l.target.y; });
 
-        node.attr('cx', function(n) { return n.x; })
+        nodes
+	    .attr('cx', function(n) { return n.x; })
             .attr('cy', function(n) { return n.y; });
     });
+
+    var unbind = $rootScope.$on('itemchanged', function(event) {
+	nodes.style('visibility', function(n) {
+	    return n.item.selected ? 'visible' : 'hidden';
+	});
+
+	force.nodes(selectedItems());
+	force.start();
+    });
+    $scope.$on('$destroy', unbind);
 })
