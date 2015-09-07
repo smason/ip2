@@ -5,6 +5,7 @@ app.factory('Items', function () {
     angular.forEach(csires.items, function(item,i) {
 	item.ord  = i;
 	item.name = item.id;
+	item.selected = true;
 
 	this[item.id] = item;
     }, items);
@@ -26,14 +27,9 @@ app.filter('parents', function() {
 app.controller('DataItems', function($scope, Items) {
     $scope.items = Items;
 
-    $scope.selectAll = function() {
-	angular.forEach(Items, function(item) {
-	    item.selected = true;
-	});
-    };
-
-    // pre-select every item
-    $scope.selectAll();
+    $scope.$on('itemchanged', function() {
+	console.log('hello world');
+    });
 })
 
 app.filter('ParentalSetFilter', function() {
@@ -64,6 +60,11 @@ app.controller('ParentalSets', function($scope, Items) {
 
 
 app.controller('NetworkGraph', function($scope, Items) {
+    $scope.$on('itemchanged', function(event) {
+	console.log('got item changed')
+	console.log(event)
+    });
+
     var parent = d3.select("#graph");
 
     var width  = parent.node().clientWidth,
@@ -113,16 +114,17 @@ app.controller('NetworkGraph', function($scope, Items) {
         .selectAll()
 	.data(items, function(i) {return i.item.ord; });
 
-    node.enter().append("circle");
-    node.attr("r", 4);
+    node.enter()
+	.append("circle")
+	.attr("r", 4);
 
     force.on("tick", function () {
-        link.attr("x1", function(d) { return d.source.x; })
-            .attr("y1", function(d) { return d.source.y; })
-            .attr("x2", function(d) { return d.target.x; })
-            .attr("y2", function(d) { return d.target.y; });
+        link.attr("x1", function(l) { return l.source.x; })
+            .attr("y1", function(l) { return l.source.y; })
+            .attr("x2", function(l) { return l.target.x; })
+            .attr("y2", function(l) { return l.target.y; });
 
-        node.attr('cx', function(d) { return d.x; })
-            .attr('cy', function(d) { return d.y; });
+        node.attr('cx', function(n) { return n.x; })
+            .attr('cy', function(n) { return n.y; });
     });
 })
