@@ -145,7 +145,7 @@ class CsiEm(object):
         X = self.X.loc[:,[j]+i].values
         Y = self.Y.loc[:,[j]].values
 
-        return csi.rbf_likelihod_gradient(X, Y, theta)
+        return csi.rbf_likelihood_gradient(X, Y, theta)
 
     def _optfn(self, x):
         """Return negated-loglik and gradient in a form suitable for use with
@@ -244,8 +244,7 @@ class Csi(object):
                 for i in range(self.data.shape[0])]
 
         return dict(replicates=[dict(id=a,time=c) for a,b,c in reps],
-                    items=[dict(id=name) for name in self.data.index],
-                    data=data,
+                    items=[dict(id=n,data=d) for (n,d) in zip(self.data.index,data)],
                     results=[r.to_json_dom() for r in res])
 
 def loadData(path):
