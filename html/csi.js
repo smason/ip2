@@ -97,27 +97,25 @@ app.controller('NetworkController', function($scope, $rootScope, Items, Marginal
 
     // build the arrow.
     svg.append("svg:defs").selectAll("marker")
-      .data(["end"])      // Different link/path types can be defined here
-    .enter().append("svg:marker")    // This section adds in the arrows
-      .attr("id", String)
-      .attr("viewBox", "0 -5 10 10")
-      .attr("refX", 15)
-      .attr("refY", 0)
-      .attr("markerWidth", 6)
-      .attr("markerHeight", 6)
-      .attr("orient", "auto")
-    .append("svg:path")
-	.attr("d", "M0,-5L10,0L0,5")
-	.style("fill","#f35");
+	.data(["end"])      // Different link/path types can be defined here
+      .enter().append("marker")    // This section adds in the arrows
+	.attr("id", String)
+	.attr("viewBox", "0 -5 10 10")
+	.attr("refX", 15)
+	.attr("refY", 0)
+	.attr("markerWidth", 6)
+	.attr("markerHeight", 6)
+	.attr("orient", "auto")
+	.style("fill","#c00")
+      .append("path")
+	.attr("d", "M0,-5L10,0L0,5");
 
     var borderPath = svg.append("rect")
         .attr("x", 0)
         .attr("y", 0)
         .attr("height", height)
         .attr("width", width)
-        .style("stroke", 'black')
-        .style("fill", "none")
-        .style("stroke-width", 1);
+        .style("fill", "none");
 
     var items = [], edges = [];
     angular.forEach(Items, function(item) {
@@ -129,7 +127,7 @@ app.controller('NetworkController', function($scope, $rootScope, Items, Marginal
 	};
 	items.push(it)
 	item.node = it;
-    })
+    });
 
     angular.forEach(MarginalParents, function(mp) {
 	var pn = mp.parent.node,
@@ -140,9 +138,9 @@ app.controller('NetworkController', function($scope, $rootScope, Items, Marginal
 	    mpar: mp,
 	    selected: function() {
 		return pn.item.selected && tn.item.selected && mp.loglik > 0.1;
-	    },
-	})
-    })
+	    }
+	});
+    });
 
     var selectedItems = function() {
 	var out = [];
@@ -173,9 +171,6 @@ app.controller('NetworkController', function($scope, $rootScope, Items, Marginal
         .attr("class", "link")
 	.selectAll()
         .data(edges).enter().append("path")
-        .attr("marker-end", "url(#end)")
-        .style("stroke", 'black')
-	.style("fill", 'transparent')
         .style("stroke-width", function(l) { return 2 * l.mpar.loglik; });
 
     var nodes = vis.append("g")
@@ -203,10 +198,34 @@ app.controller('NetworkController', function($scope, $rootScope, Items, Marginal
             .attr('cy', function(n) { return n.y; });
     });
 
-    var	runWithIt = function () {
+    var setStyles = function() {
 	// show/hide the nodes and edges as appropriate
-	nodes.style('visibility', function(n) { return n.selected() ? 'visible' : 'hidden'; });
-	links.style('visibility', function(l) { return l.selected() ? 'visible' : 'hidden'; });
+	nodes.attr('class', function(n) {
+	    var str = '';
+	    if (n.item.mouseover)
+		str += ' mouseover';
+	    if (n.selected())
+		str += ' selected';
+	    return str;
+	});
+	nodes.attr('r', function(a) {
+	    return a.item.mouseover ? 6 : 4;
+	});
+
+	links.attr('class', function(l) {
+	    var str = '';
+	    if (l.selected())
+		str += ' selected';
+	    if (l.mpar.loglik > 0.1 &&
+		((l.source.item.mouseover && l.target.selected()) ||
+		 (l.target.item.mouseover && l.source.selected())))
+		str += ' mouseover';
+	    return str;
+	});
+    };
+
+    var runWithIt = function () {
+	setStyles();
 
 	force
             .nodes(selectedItems())
@@ -215,12 +234,21 @@ app.controller('NetworkController', function($scope, $rootScope, Items, Marginal
             .start();
     };
 
+    $rootScope.$on('mouseenter', function(evt,item) {
+	item.mouseover = true;
+	setStyles();
+    });
+
+    $rootScope.$on('mouseleave', function(evt,item) {
+	item.mouseover = false;
+	setStyles();
+    });
+
     var unbind = $rootScope.$on('itemchanged', runWithIt);
     $scope.$on('$destroy', unbind);
 
     runWithIt();
 })
-
 
 app.controller('ExpressionController', function($scope, Items, MarginalParents) {
     var parent = d3.select("#data");
@@ -261,12 +289,14 @@ app.controller('ExpressionController', function($scope, Items, MarginalParents) 
 	.append("g")
 	  .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-    data = [];
+    data  = [];
+    data2 = [];
 
-    it = Items["Gene1"].data
+    it = Items["Gene1"].data;
     angular.forEach(csires.replicates, function(r, i) {
+	data2.push({rep:r.id, x:r.time, y:it[i]});
 	angular.forEach(r.time, function(t,j) {
-	    data.push({rep:r.id,x:t,y:it[i][j]})
+	    data.push({rep:r.id, x:t, y:it[i][j]})
 	});
     });
 
@@ -294,7 +324,7 @@ app.controller('ExpressionController', function($scope, Items, MarginalParents) 
 	.attr("y", 4)
 	.attr("dy", ".71em")
 	.style("text-anchor", "end")
-	.text("Expression")
+	.text("Expression");
 
     svg.selectAll(".dot")
 	  .data(data)
@@ -304,6 +334,21 @@ app.controller('ExpressionController', function($scope, Items, MarginalParents) 
 	  .attr("cx", function(d) { return x(d.x); })
 	  .attr("cy", function(d) { return y(d.y); })
 	  .attr("fill", function(d) { return color(d.rep); });
+
+    svg.selectAll(".line")
+	  .data(data2)
+	.enter().append("path")
+	  .attr("class", "line")
+	  .attr("d", function(d) {
+	      var s = "M"+x(d.x[0])+","+y(d.y[0]);
+	      for (var i = 1; i < d.x.length; i++) {
+		  s += "L"+x(d.x[i])+","+y(d.y[i]);
+	      }
+	      return s;
+	  })
+	  .attr("fill", "none")
+	  .attr("stroke", function(d) { return color(d.rep); })
+          .style("stroke-width", 2);
 
     var legend = svg.selectAll(".legend")
 	.data(color.domain())

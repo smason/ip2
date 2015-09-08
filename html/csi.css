@@ -26,6 +26,35 @@
     min-height: 20rem;
 }
 
+.node {
+    visibility: hidden;
+}
+
+.link {
+    marker-end: url(#end);
+    fill: none;
+    stroke: black;
+    visibility: hidden;
+}
+
+.selected  { visibility: visible; }
+.mouseover { visibility: visible; }
+
+.node .mouseover {
+    stroke: royalblue;
+    stroke-width: 1pt;
+    fill: white;
+}
+
+.node .mouseover.selected {
+    fill: black;
+    stroke-width: 2pt;
+}
+
+.link .mouseover {
+    stroke: royalblue;
+}
+
 .axis path,
 .axis line {
   fill: none;

@@ -37,7 +37,10 @@
     <div id="main">
       <div id="data-items" ng-controller="ItemController">
 	<div id="data-item" ng-repeat="item in items | orderBy : 'ord'">
-	  <input type="checkbox" ng-model="item.selected" ng-change="$emit('itemchanged')"> {{item.name}}
+	  <span ng-mouseenter="$emit('mouseenter',item)" ng-mouseleave="$emit('mouseleave',item)">
+	    <input type="checkbox" ng-model="item.selected"
+		   ng-change="$emit('itemchanged')"> {{item.name}}
+	  </span>
 	</div>
       </div><div id="graphpset"><div id="graph" ng-controller="NetworkController">
 	</div><div id="parental-set" ng-controller="ParentalSetController">
