@@ -17,7 +17,7 @@ class RbfLikelihoodGradient(object):
         self.loglik = loglik
         self.gradient = gradient
 
-def rbf_likelihod_gradient(X, Y, theta):
+def rbf_likelihood_gradient(X, Y, theta):
     """Log-likelihood and gradient of parameters of a GP, optimised for
     our use case.  We use a RBF/squared-exponential kernel for our
     Gaussian Process, and return a structure for easy/quick lookup.
