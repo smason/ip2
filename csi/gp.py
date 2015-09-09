@@ -73,3 +73,40 @@ def rbf_likelihood_gradient(X, Y, theta):
     gradient[1] = np.sum(dist.squareform(r)**2 * dL_dK) / l2
 
     return RbfLikelihoodGradient(X, Y, theta, log_marginal, gradient)
+
+def rbf_predict(X, Y, theta, X2):
+    [sf2, l2, sn2] = theta
+
+    # evaluate RBF kernel for our given X
+    r = dist.pdist(X) / l2
+    K = dist.squareform(sf2 * np.exp(-0.5 * r**2))
+    np.fill_diagonal(K, sf2)
+
+    # add in Gaussian noise
+    Ky = K.copy()
+    np.fill_diagonal(Ky, sf2 + sn2 + 1e-8)
+
+    # compute the Cholesky factorization of our covariance matrix
+    LW, info = lapack.dpotrf(Ky, lower=True)
+    assert info == 0
+
+    # calculate lower half of inverse of K (assumes real symmetric positive definite)
+    Wi, info = lapack.dpotri(LW, lower=True)
+    assert info == 0
+
+    # make symmetric by filling in the upper half
+    Wi += np.tril(Wi,-1).T
+
+    # and solve
+    alpha, info = lapack.dpotrs(LW, Y, lower=True)
+    assert info == 0
+
+    r2 = dist.cdist(X,X2) / l2
+    Kx = sf2 * np.exp(-0.5 * r2**2)
+
+    WiKx = np.dot(Wi, Kx)
+
+    mu = np.dot(Kx.T, alpha)
+    var = (sf2 - np.sum(WiKx*Kx, 0))[:,None]
+
+    return (mu,var)
