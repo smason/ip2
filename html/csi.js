@@ -75,7 +75,7 @@ app.filter('ParentalSetFilter', function() {
 app.controller('ParentalSetController', function($scope, Items, ParentalSets) {
     $scope.Items        = Items;
     $scope.ParentalSets = ParentalSets;
-    $scope.weightthresh = 0.1;
+    $scope.weightthresh = 0.01;
 })
 
 app.controller('NetworkController', function($scope, $rootScope, Items, MarginalParents) {
@@ -137,7 +137,7 @@ app.controller('NetworkController', function($scope, $rootScope, Items, Marginal
 	    target: tn,
 	    mpar: mp,
 	    selected: function() {
-		return pn.item.selected && tn.item.selected && mp.loglik > 0.1;
+		return pn.item.selected && tn.item.selected && mp.loglik > 0.01;
 	    }
 	});
     });
@@ -216,7 +216,7 @@ app.controller('NetworkController', function($scope, $rootScope, Items, Marginal
 	    var str = '';
 	    if (l.selected())
 		str += ' selected';
-	    if (l.mpar.loglik > 0.1 &&
+	    if (l.mpar.loglik > 0.01 &&
 		((l.source.item.mouseover && l.target.selected()) ||
 		 (l.target.item.mouseover && l.source.selected())))
 		str += ' mouseover';
@@ -262,7 +262,6 @@ app.controller('ExpressionController', function($scope, Items, MarginalParents) 
 	return [r[0] - d, r[1] + d]
     }
 
-
     var xRange = rangeScale([0, width],-0.02),
 	x = d3.scale.linear()
 	.range(xRange);
@@ -289,19 +288,104 @@ app.controller('ExpressionController', function($scope, Items, MarginalParents) 
 	.append("g")
 	  .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-    data  = [];
-    data2 = [];
+    x.domain([
+	d3.min(csires.replicates, function(r) { return d3.min(r.time); }),
+	d3.max(csires.replicates, function(r) { return d3.max(r.time); })
+    ]);
+    y.domain([
+	d3.min(csires.items, function(i) {return d3.min(i.data, function(x) { return d3.min(x); })}),
+	d3.max(csires.items, function(i) {return d3.max(i.data, function(x) { return d3.max(x); })})
+    ]);
 
-    it = Items["Gene1"].data;
-    angular.forEach(csires.replicates, function(r, i) {
-	data2.push({rep:r.id, x:r.time, y:it[i]});
-	angular.forEach(r.time, function(t,j) {
-	    data.push({rep:r.id, x:t, y:it[i][j]})
+    var	addDataSet = function(item) {
+	data  = [];
+	data2 = [];
+
+	it = item.data;
+	angular.forEach(csires.replicates, function(r, i) {
+	    data2.push({rep:r.id, x:r.time, y:it[i]});
+	    angular.forEach(r.time, function(t,j) {
+		data.push({rep:r.id, x:t, y:it[i][j]})
+	    });
 	});
-    });
 
-    x.domain(d3.extent(data, function(d) { return d.x; }));
-    y.domain(d3.extent(data, function(d) { return d.y; }));
+	var ds = svg.append("g")
+	    .attr("class", "dataset")
+	    .attr('clip-path', 'url(#plotAreaClip)')
+
+	ds.selectAll(".dot")
+	    .data(data)
+	  .enter().append("circle")
+	    .attr("class", "dot")
+	    .attr("r", 3)
+	    .attr("cx", function(d) { return x(d.x); })
+	    .attr("cy", function(d) { return y(d.y); })
+	    .attr("fill", function(d) { return color(d.rep); });
+
+	var l = ds.selectAll(".line")
+	    .data(data2)
+	  .enter().append("path")
+	    .attr("class", "line")
+	    .attr("d", function(d) {
+		var s = "M"+x(d.x[0])+","+y(d.y[0]);
+		for (var i = 1; i < d.x.length; i++) {
+		    s += "L"+x(d.x[i])+","+y(d.y[i]);
+		}
+		return s;
+	    })
+	    .attr("fill", "none")
+	    .attr("stroke", function(d) { return color(d.rep); })
+            .style("stroke-width", 2);
+
+	var predidx = 0;
+	preds = []
+	angular.forEach(csires.results, function(res) {
+	    if(res.item == item.name) {
+		angular.forEach(res.weights, function(weight,pset) {
+		    if (weight > 0.01) {
+			predi = res.predictions[pset];
+			angular.forEach(csires.replicates, function(rep,repn) {
+			    for (var i = 1; i < rep.time.length; i++) {
+				preds.push({rep:rep.id, weight:weight,
+					    sn2: res.hyperparams[2],
+					    predidx: predidx,
+					    time:rep.time[i],
+					    mu:predi.mu[repn][i-1],
+					    var:predi.var[repn][i-1]})
+			    }
+			});
+			predidx += 1;
+		    }
+		});
+	    }
+	});
+
+	var predoff = -(predidx-1)/2
+
+	var predSel = ds.selectAll().data(preds).enter();
+
+	predSel.append("path")
+	    .attr("class", "prediction")
+	    .attr("d", function(d) {
+		xt = x(d.time)+(d.predidx+predoff)*2
+		return ("M"+xt+","+y(d.mu+2*Math.sqrt(d.var+d.sn2))+
+			"L"+xt+","+y(d.mu-2*Math.sqrt(d.var+d.sn2)))
+	    })
+	    .attr("stroke", function(d) { return color(d.rep); })
+            .style("stroke-width", function(d) { return d.weight; });
+
+	predSel.append("path")
+	    .attr("class", "prediction")
+	    .attr("d", function(d) {
+		xt = x(d.time)+(d.predidx+predoff)*2
+		return ("M"+(xt-3)+","+y(d.mu)+
+			"L"+(xt+3)+","+y(d.mu)+
+			"M"+xt+","+y(d.mu+2*Math.sqrt(d.var))+
+			"L"+xt+","+y(d.mu-2*Math.sqrt(d.var)))
+	    })
+	    .attr("stroke", function(d) { return color(d.rep); })
+            .style("stroke-width", function(d) { return d.weight*2; });
+    }
 
     svg.append("g")
 	.attr("class", "x axis")
@@ -326,29 +410,12 @@ app.controller('ExpressionController', function($scope, Items, MarginalParents) 
 	.style("text-anchor", "end")
 	.text("Expression");
 
-    svg.selectAll(".dot")
-	  .data(data)
-	.enter().append("circle")
-	  .attr("class", "dot")
-	  .attr("r", 3)
-	  .attr("cx", function(d) { return x(d.x); })
-	  .attr("cy", function(d) { return y(d.y); })
-	  .attr("fill", function(d) { return color(d.rep); });
+    addDataSet(Items['Gene6'])
 
-    svg.selectAll(".line")
-	  .data(data2)
-	.enter().append("path")
-	  .attr("class", "line")
-	  .attr("d", function(d) {
-	      var s = "M"+x(d.x[0])+","+y(d.y[0]);
-	      for (var i = 1; i < d.x.length; i++) {
-		  s += "L"+x(d.x[i])+","+y(d.y[i]);
-	      }
-	      return s;
-	  })
-	  .attr("fill", "none")
-	  .attr("stroke", function(d) { return color(d.rep); })
-          .style("stroke-width", 2);
+    svg.append('clipPath')
+	.attr('id', 'plotAreaClip')
+      .append('rect')
+	.attr({ width: width, height: height });
 
     var legend = svg.selectAll(".legend")
 	.data(color.domain())
