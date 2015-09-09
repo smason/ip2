@@ -6,7 +6,7 @@ import pandas as pd
 
 import itertools as it
 
-import csi
+import csi.gp as gp
 
 import logging
 logger = logging.getLogger('CSI')
@@ -72,6 +72,7 @@ class CsiResult(object):
 
 class EmRes(CsiResult):
     def __init__(self, em):
+        self.em      = em
         self.hypers  = np.copy(em.hypers)
         self.weights = np.copy(em.weights)
         self.pset    = em.pset
@@ -94,20 +95,33 @@ class EmRes(CsiResult):
             for regulator in pset[0]:
                 yield (regulator,target,weight)
 
+    def enum_predictions(self):
+        reps = self.em.csi.get_replicates()
+        ilocs = [np.array(r.iloc[:-1]) for r in reps]
+
+        for pset in self.pset:
+            mu,var = self.em._predict_pset(pset, self.hypers)
+
+            yield dict(
+                mu  = [mu [l-i,0].tolist() for i,l in enumerate(ilocs)],
+                var = [var[l-i,0].tolist() for i,l in enumerate(ilocs)]
+            )
+
     def to_json_dom(self):
         return dict(restype="EM",
                     item=self.pset[0][1],
                     hyperparams=self.hypers.tolist(),
                     weights=self.weights.tolist(),
                     loglik=self.ll.tolist(),
-                    parents=[a for (a,_) in self.pset])
+                    parents=[a for (a,_) in self.pset],
+                    predictions=list(self.enum_predictions()))
 
 class CsiEm(object):
     "Find MAP estimate via Expectation-Maximisation."
     def __init__(self, csi):
         self.csi = csi
-        self.X = csi.X.T
-        self.Y = csi.Y.T
+        self.X = csi.X
+        self.Y = csi.Y
         self.pset = []
         self.weighttrunc = 1e-5
         self.sampleinitweights = True
@@ -140,12 +154,19 @@ class CsiEm(object):
         self.hypers = sp.exp(sp.randn(3))
         self.weights = w
 
+    def _predict_pset(self, pset, theta):
+        i,j = pset
+        X = self.X.loc[:,[j]+i].values
+        Y = self.Y.loc[:,[j]].values
+
+        return gp.rbf(X,Y,theta).predict(X)
+
     def _loglik_pset(self, pset, theta):
         i,j = pset
         X = self.X.loc[:,[j]+i].values
         Y = self.Y.loc[:,[j]].values
 
-        return csi.rbf_likelihood_gradient(X, Y, theta)
+        return gp.rbf_likelihood_gradient(X, Y, theta)
 
     def _optfn(self, x):
         """Return negated-loglik and gradient in a form suitable for use with
@@ -210,6 +231,12 @@ class CsiEm(object):
     def getResults(self):
         return EmRes(self)
 
+class CsiRep(object):
+    def __init__(self,name,ilocs,time):
+        self.name = name
+        self.iloc = ilocs
+        self.time = time
+
 class Csi(object):
     "Perform CSI analysis on the provided data"
     def __init__(self, data):
@@ -217,8 +244,21 @@ class Csi(object):
 
         n = [a for a,b in data.columns.values]
         ix = np.flatnonzero(np.array([a==b for a,b in zip(n, n[1:])]))
-        self.X = data.iloc[:,ix]
-        self.Y = data.iloc[:,ix+1]
+        self.X = data.iloc[:,ix].T
+        self.Y = data.iloc[:,ix+1].T
+
+    def get_replicates(self):
+        ""
+        def c1(tup):
+            a,(b,c) = tup
+            return b
+        def mk(a,l):
+            l  = list(l)
+            ix = [i for i,_ in l]
+            v  = [v for _,(_,v) in l]
+            return CsiRep(a,ix,v)
+
+        return [mk(a,l) for a,l in it.groupby(enumerate(self.data.columns),c1)]
 
     def allParents(self, item, depth):
         "Utility function to calculate the parental set of the given item"
@@ -230,20 +270,12 @@ class Csi(object):
 
     def to_json_dom(self, res):
         "@res is a list of objects derived from CsiResult's"
-        def c1(tup):
-            a,(b,c) = tup
-            return b
-        def mkpair(a,l):
-            l = list(l)
-            i = [i for i,_ in l]
-            v = [v for _,(_,v) in l]
-            return (a,i,v)
+        reps = self.get_replicates()
 
-        reps = [mkpair(a,b) for a,b in it.groupby(enumerate(self.data.columns),c1)]
-        data = [[self.data.iloc[i,b].values.tolist() for a,b,c in reps]
+        data = [[self.data.iloc[i,r.iloc].values.tolist() for r in reps]
                 for i in range(self.data.shape[0])]
 
-        return dict(replicates=[dict(id=a,time=c) for a,b,c in reps],
+        return dict(replicates=[dict(id=r.name,time=r.time) for r in reps],
                     items=[dict(id=n,data=d) for (n,d) in zip(self.data.index,data)],
                     results=[r.to_json_dom() for r in res])
 
