@@ -9,14 +9,6 @@ _LOG_2_PI = 1.837877066409345483556
 # likelihood from the GPy library.  All I care about is getting at the
 # log-likelihood and gradient of parameters quickly for a given theta
 
-class RbfLikelihoodGradient(object):
-    def __init__(self, X, Y, theta, loglik, gradient):
-        self.X   = X
-        self.Y   = Y
-        self.theta = theta
-        self.loglik = loglik
-        self.gradient = gradient
-
 class rbf(object):
     def __init__(self, X, Y, theta):
         [sf2, l2, sn2] = theta
@@ -109,23 +101,3 @@ class rbf(object):
         var = (sf2 - np.sum(WiKx*Kx, 0))[:,None]
 
         return (mu,var)
-
-def rbf_likelihood_gradient(X, Y, theta):
-    """Log-likelihood and gradient of parameters of a GP, optimised for
-    our use case.  We use a RBF/squared-exponential kernel for our
-    Gaussian Process, and return a structure for easy/quick lookup.
-
-    The parameter definitions and naming conventions (mostly) follow
-    the `GPML` library of Rasmussen and Williams, they are the
-    variance (`sf2`) and lengthscale (`l2`) of the RBF Kernel, and the
-    variance of the additive Gaussian noise (`return`).
-    """
-
-    gp = rbf(X, Y, theta)
-
-    return RbfLikelihoodGradient(X, Y, theta, gp.log_marginal(), gp.gradient_theta())
-
-def rbf_predict(X, Y, theta, X2):
-    gp = rbf(X, Y, theta)
-
-    return gp.predict(X2)
