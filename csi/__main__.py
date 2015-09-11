@@ -166,12 +166,6 @@ def main(args=None):
     if jsonoutput is not None:
         json.dump(cc.to_json_dom(results), jsonoutput)
 
-    # truncate graph at a given level
-    df = pd.DataFrame(list(it.chain(*[r.getMarginalWeights() for r in results])),
-                      columns=['regulator','target','weight'])
-    dfm = df.groupby(['regulator','target']).sum()
-    print(dfm.sort('weight',ascending=False))
-
     # plot in pdf?  an interactive html page may be better!
 
 if __name__ == '__main__':

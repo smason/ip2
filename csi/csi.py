@@ -4,6 +4,8 @@ import scipy.optimize as spo
 import scipy.stats as sps
 import pandas as pd
 
+import multiprocessing as mp
+
 import itertools as it
 
 import csi.gp as gp
@@ -116,6 +118,41 @@ class EmRes(CsiResult):
                     parents=[a for (a,_) in self.pset],
                     predictions=list(self.enum_predictions()))
 
+def _pool_init(X, Y, pset):
+    "Initialise (global) variables shared by all Pool workers"
+    global X_, Y_, pset_
+
+    X_ = X
+    Y_ = Y
+    pset_ = pset
+
+def _pool_eval_gp(i, theta):
+    "Evaluate a GP for parental set @i using a RBF"
+
+    # extract the items for our given parental set
+    pi,gi = pset_[i]
+
+    # pull out data for these items
+    X = X_.loc[:,[gi]+pi].values
+    Y = Y_.loc[:,[gi]].values
+
+    # evaluate the GP
+    return gp.rbf(X, Y, theta)
+
+def _pool_loglik_grad(args):
+    "Calculate marginal likelihood and gradient of given parameters"
+    i,weight,theta = args
+
+    m = _pool_eval_gp(i, theta)
+
+    return (weight * m.log_marginal(), weight * m.gradient_theta())
+
+def _pool_loglik(args):
+    "Calculate the marginal likelihood for our parental set"
+    i,theta = args
+
+    return _pool_eval_gp(i, theta).log_marginal()
+
 class CsiEm(object):
     "Find MAP estimate via Expectation-Maximisation."
     def __init__(self, csi):
@@ -126,6 +163,8 @@ class CsiEm(object):
         self.weighttrunc = 1e-5
         self.sampleinitweights = True
 
+        self.pool = None
+
     @property
     def hypers(self):
         return self._hypers
@@ -135,7 +174,7 @@ class CsiEm(object):
         self._hypers   = value
         self._updatell = True
 
-    def setup(self, pset):
+    def setup(self, pset, poolsize=None):
         "Configure model for EM using the specified parent set."
 
         if self.sampleinitweights:
@@ -154,19 +193,16 @@ class CsiEm(object):
         self.hypers = sp.exp(sp.randn(3))
         self.weights = w
 
+        self.pool = mp.Pool(poolsize, _pool_init,
+                            (self.X, self.Y, self.pset))
+
     def _predict_pset(self, pset, theta):
         i,j = pset
+
         X = self.X.loc[:,[j]+i].values
         Y = self.Y.loc[:,[j]].values
 
         return gp.rbf(X,Y,theta).predict(X)
-
-    def _loglik_pset(self, pset, theta):
-        i,j = pset
-        X = self.X.loc[:,[j]+i].values
-        Y = self.Y.loc[:,[j]].values
-
-        return gp.rbf_likelihood_gradient(X, Y, theta)
 
     def _optfn(self, x):
         """Return negated-loglik and gradient in a form suitable for use with
@@ -174,21 +210,19 @@ class CsiEm(object):
 
         logger.debug("     optfn(theta=%s)", str(x))
 
-        ll = 0.
-        grad = np.zeros(len(x))
-
         wmx = max(self.weights) * self.weighttrunc
-        for w,pset in zip(self.weights,self.pset):
-            # weights are expected to be highly correlated with
-            # expected likelihood, therefore no point evaluating
-            # these
+
+        ip = []
+        for i,w in enumerate(self.weights):
             if w < wmx:
                 continue
+            ip.append((i,w,x))
 
-            m = self._loglik_pset(pset, x)
-
-            ll   += w * m.loglik
-            grad += w * m.gradient
+        ll = 0.
+        grad = np.zeros(len(x))
+        for l,g in self.pool.imap_unordered(_pool_loglik_grad, ip, 10):
+            ll   += l
+            grad += g
 
         logger.debug("       optfn=%g", ll)
 
@@ -208,12 +242,13 @@ class CsiEm(object):
         "Return the log-likelihood of each GP given the current hyperparameters"
         if not self._updatell:
             return self._ll
-        ll = np.zeros(len(self.pset))
-        for i,pset in enumerate(self.pset):
-            ll[i] = self._loglik_pset(pset, self._hypers).loglik
-        self._ll       = ll
+
+        ip = zip(range(len(self.pset)),it.repeat(self.hypers))
+
+        self._ll = np.array(self.pool.map(_pool_loglik, ip, 10))
         self._updatell = False
-        return ll
+
+        return self._ll
 
     def reweight(self):
         "Recalculate the weights and return the KL divergence."
@@ -288,11 +323,11 @@ def loadData(path):
         # convert to floating point values
         return inp.astype(float)
 
-def runCsiEm(em, genes, fnpset):
+def runCsiEm(em, genes, fnpset, poolsize=None):
     for gene in genes:
         logger.info("Processing: %s", repr(gene))
 
-        em.setup(fnpset(gene))
+        em.setup(fnpset(gene), poolsize)
 
         for ittr in range(1, 20):
             logger.debug("%2i: optimising hyperparameters",
@@ -301,7 +336,7 @@ def runCsiEm(em, genes, fnpset):
             logger.debug("%2i: recalculating weights",
                          ittr)
             kl = em.reweight()
-            logger.debug("%2i: kl=%10.4g, hypers=%s",
+            logger.info("%2i: kl=%10.4g, hypers=%s",
                          ittr,kl,str(em.hypers))
             if kl < 1e-5:
                 break
