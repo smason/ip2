@@ -46,6 +46,8 @@ def cmdparser(args):
                    help="write PDF output to FILE", metavar='FILE')
     out.add_option('--json',dest='jsonoutput',
                    help="write JSON output to FILE", metavar='FILE')
+    out.add_option('--minpickle',dest='minpickleout',
+                   help="pickle minimal output to FILE", metavar='FILE')
 
     # define compatibility options
     op.add_option_group(compat)
@@ -103,6 +105,11 @@ def main(args=None):
         jsonoutput = open(op.jsonoutput,'w')
     else:
         jsonoutput = None
+
+    if op.minpickleout:
+        minpickleout = open(op.minpickleout,'wb')
+    else:
+        minpickleout = None
 
     # load the data from disk
     inp = csi.loadData(fname[0])
@@ -164,7 +171,11 @@ def main(args=None):
         results.append(res)
 
     if jsonoutput is not None:
-        json.dump(cc.to_json_dom(results), jsonoutput)
+        json.dump(cc.to_dom(results), jsonoutput)
+
+    if minpickleout is not None:
+        import pickle
+        pickle.dump(cc.to_mindom(results), minpickleout)
 
     # plot in pdf?  an interactive html page may be better!
 

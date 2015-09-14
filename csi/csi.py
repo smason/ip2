@@ -13,6 +13,15 @@ import csi.gp as gp
 import logging
 logger = logging.getLogger('CSI')
 
+def parental_sets_to_ints(psets, items):
+    map = {}
+    for i,name in enumerate(items):
+        map[name] = i
+
+    for pi,gi in psets:
+        yield ([map[p] for p in pi],
+               map[gi])
+
 def parentalSets(items, item, depth):
     """Iterate over all "Parental Sets".
 
@@ -69,7 +78,7 @@ class CsiEmFailed(CsiError):
         self.res = res
 
 class CsiResult(object):
-    def to_json_dom(self):
+    def to_dom(self):
         raise NotImplementedError
 
 class EmRes(CsiResult):
@@ -109,14 +118,31 @@ class EmRes(CsiResult):
                 var = [var[l-i,0].tolist() for i,l in enumerate(ilocs)]
             )
 
-    def to_json_dom(self):
-        return dict(restype="EM",
-                    item=self.pset[0][1],
-                    hyperparams=self.hypers.tolist(),
-                    weights=self.weights.tolist(),
-                    loglik=self.ll.tolist(),
-                    parents=[a for (a,_) in self.pset],
-                    predictions=list(self.enum_predictions()))
+    def to_mindom(self, items):
+        def minpset():
+            for pi,gi in parental_sets_to_ints(self.pset, items):
+                yield ' '.join(str(i) for i in pi)
+
+        return dict(
+            restype="EM",
+            item=self.pset[0][1],
+            hyperparams=self.hypers.tolist(),
+            weights=self.weights.tolist(),
+            parents=list(minpset()))
+
+    def to_dom(self, predictions=False):
+        ret = dict(restype="EM",
+                   item=self.pset[0][1],
+                   hyperparams=self.hypers.tolist(),
+                   weights=self.weights.tolist(),
+                   loglik=self.ll.tolist(),
+                   parents=[a for (a,_) in self.pset])
+
+        if predictions:
+            ret[predictions] = list(self.enum_predictions())
+
+        return ret
+
 
 def _pool_init(X, Y, pset):
     "Initialise (global) variables shared by all Pool workers"
@@ -295,15 +321,24 @@ class Csi(object):
 
         return [mk(a,l) for a,l in it.groupby(enumerate(self.data.columns),c1)]
 
+    def get_items(self):
+        return self.data.index.tolist()
+
     def allParents(self, item, depth):
         "Utility function to calculate the parental set of the given item"
-        return list(parentalSets(self.data.index, item, depth))
+        return list(parentalSets(self.get_items(), item, depth))
 
     def getEm(self):
         "For getting at a MAP estimate via expectation-maximisation."
         return CsiEm(self)
 
-    def to_json_dom(self, res):
+    def to_mindom(self, res):
+        items = self.get_items()
+        return dict(
+            items=items,
+            results=[r.to_mindom(items) for r in res])
+
+    def to_dom(self, res):
         "@res is a list of objects derived from CsiResult's"
         reps = self.get_replicates()
 
@@ -311,8 +346,8 @@ class Csi(object):
                 for i in range(self.data.shape[0])]
 
         return dict(replicates=[dict(id=r.name,time=r.time) for r in reps],
-                    items=[dict(id=n,data=d) for (n,d) in zip(self.data.index,data)],
-                    results=[r.to_json_dom() for r in res])
+                    items=[dict(id=n,data=d) for (n,d) in zip(self.get_items(),data)],
+                    results=[r.to_dom() for r in res])
 
 def loadData(path):
     with open(path) as fd:
