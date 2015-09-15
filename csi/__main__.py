@@ -37,6 +37,8 @@ def cmdparser(args):
                   help="Truncate parental set at depth D")
     op.add_option('--gene',dest='genes',action='append',metavar='GENE',
                   help="Limit analysis to a specific gene (repeat for more than one)")
+    op.add_option('--mp',dest='numprocs',type='int',
+                  help="Number of CPU cores (worker processes) to use")
 
     # define output parameters
     op.add_option_group(out)
@@ -94,6 +96,11 @@ def main(args=None):
     # sanity check!
     if depth == 1:
         logger.info("Truncation depth of 1 may not be very useful")
+
+    numprocs = op.numprocs
+    if numprocs is not None and numprocs < 1:
+        sys.stderr.write("Error: must have one or more worker process")
+        sys.exit(1)
 
     # figure out where our output is going
     if op.csvoutput is None or op.csvoutput == '-':
@@ -166,7 +173,7 @@ def main(args=None):
             sys.exit(1)
 
     results = []
-    for res in csi.runCsiEm(em, genes, lambda gene: cc.allParents(gene,depth)):
+    for res in csi.runCsiEm(em, genes, lambda gene: cc.allParents(gene,depth), numprocs):
         res.writeCsv(csvout)
         results.append(res)
 
