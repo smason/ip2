@@ -143,41 +143,46 @@ class EmRes(CsiResult):
 
         return ret
 
+class CsiEmWorker(object):
+    def __init__(self, X, Y, pset):
+        self.X = X
+        self.Y = Y
+        self.pset = pset
+
+    def eval_gp(self, i, theta):
+        "Evaluate a GP for parental set @i using a RBF"
+
+        # extract the items for our given parental set
+        pi,gi = self.pset[i]
+
+        # pull out data for these items
+        X = self.X.loc[:,[gi]+pi].values
+        Y = self.Y.loc[:,[gi]].values
+
+        # evaluate the GP
+        return gp.rbf(X, Y, theta)
+
+    def loglik_grad(self, args):
+        "Calculate marginal likelihood and gradient of given parameters"
+        i,weight,theta = args
+
+        m = self.eval_gp(i, theta)
+
+        return (weight * m.log_marginal(), weight * m.gradient_theta())
+
+    def loglik(self, args):
+        "Calculate the marginal likelihood for our parental set"
+        i,theta = args
+
+        return self.eval_gp(i, theta).log_marginal()
 
 def _pool_init(X, Y, pset):
     "Initialise (global) variables shared by all Pool workers"
-    global X_, Y_, pset_
+    global _pool
+    _pool = CsiEmWorker(X, Y, pset)
 
-    X_ = X
-    Y_ = Y
-    pset_ = pset
-
-def _pool_eval_gp(i, theta):
-    "Evaluate a GP for parental set @i using a RBF"
-
-    # extract the items for our given parental set
-    pi,gi = pset_[i]
-
-    # pull out data for these items
-    X = X_.loc[:,[gi]+pi].values
-    Y = Y_.loc[:,[gi]].values
-
-    # evaluate the GP
-    return gp.rbf(X, Y, theta)
-
-def _pool_loglik_grad(args):
-    "Calculate marginal likelihood and gradient of given parameters"
-    i,weight,theta = args
-
-    m = _pool_eval_gp(i, theta)
-
-    return (weight * m.log_marginal(), weight * m.gradient_theta())
-
-def _pool_loglik(args):
-    "Calculate the marginal likelihood for our parental set"
-    i,theta = args
-
-    return _pool_eval_gp(i, theta).log_marginal()
+def _pool_loglik_grad(args):  return _pool.loglik_grad(args)
+def _pool_loglik(args):       return _pool.loglik(args)
 
 class CsiEm(object):
     "Find MAP estimate via Expectation-Maximisation."
@@ -219,8 +224,12 @@ class CsiEm(object):
         self.hypers = sp.exp(sp.randn(3))
         self.weights = w
 
-        self.pool = mp.Pool(poolsize, _pool_init,
-                            (self.X, self.Y, self.pset))
+        if poolsize is None:
+            self.pool = None
+            self.worker = CsiEmWorker(self.X, self.Y, self.pset)
+        else:
+            self.pool = mp.Pool(poolsize, _pool_init,
+                                (self.X, self.Y, self.pset))
 
     def _predict_pset(self, pset, theta):
         i,j = pset
@@ -246,7 +255,13 @@ class CsiEm(object):
 
         ll = 0.
         grad = np.zeros(len(x))
-        for l,g in self.pool.imap_unordered(_pool_loglik_grad, ip, 10):
+
+        if self.pool is None:
+            itr = map(self.worker.loglik_grad, ip)
+        else:
+            itr = self.pool.imap_unordered(_pool_loglik_grad, ip, 10)
+
+        for l,g in itr:
             ll   += l
             grad += g
 
@@ -270,8 +285,12 @@ class CsiEm(object):
             return self._ll
 
         ip = zip(range(len(self.pset)),it.repeat(self.hypers))
+        if self.pool is None:
+            itr = list(map(self.worker.loglik, ip))
+        else:
+            itr = self.pool.map(_pool_loglik, ip, 10)
 
-        self._ll = np.array(self.pool.map(_pool_loglik, ip, 10))
+        self._ll = np.array(itr)
         self._updatell = False
 
         return self._ll
