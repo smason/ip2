@@ -3,6 +3,7 @@ import scipy as sp
 import scipy.optimize as spo
 import scipy.stats as sps
 import pandas as pd
+import h5py as h5
 
 import multiprocessing as mp
 
@@ -13,14 +14,8 @@ import csi.gp as gp
 import logging
 logger = logging.getLogger('CSI')
 
-def parental_sets_to_ints(psets, items):
-    map = {}
-    for i,name in enumerate(items):
-        map[name] = i
-
-    for pi,gi in psets:
-        yield ([map[p] for p in pi],
-               map[gi])
+def dictmap_of_list(items):
+    return dict((b,a) for (a,b) in enumerate(items))
 
 def parentalSets(items, item, depth):
     """Iterate over all "Parental Sets".
@@ -118,17 +113,21 @@ class EmRes(CsiResult):
                 var = [var[l-i,0].tolist() for i,l in enumerate(ilocs)]
             )
 
-    def to_mindom(self, items):
-        def minpset():
-            for pi,gi in parental_sets_to_ints(self.pset, items):
-                yield ' '.join(str(i) for i in pi)
+    def write_hdf5(self, grp, itemmap):
+        ptype = h5.special_dtype(vlen=h5.special_dtype(enum=('i', itemmap)))
 
-        return dict(
-            restype="EM",
-            item=self.pset[0][1],
-            hyperparams=self.hypers.tolist(),
-            weights=self.weights.tolist(),
-            parents=list(minpset()))
+        pset = np.array([np.array([itemmap[i] for i in pi],dtype=np.int32)
+                         for pi,gi in self.pset],
+                        dtype=ptype)
+
+        ga = grp.attrs
+        ga['restype']     = 'EM'
+        ga['item']        = self.pset[0][1]
+        ga['hyperparams'] = self.hypers
+
+        grp.create_dataset('loglik',data=self.ll)
+        grp.create_dataset('weight',data=self.weights)
+        grp.create_dataset('parents',data=pset)
 
     def to_dom(self, predictions=False):
         ret = dict(restype="EM",
