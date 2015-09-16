@@ -14,9 +14,6 @@ import csi.gp as gp
 import logging
 logger = logging.getLogger('CSI')
 
-def dictmap_of_list(items):
-    return dict((b,a) for (a,b) in enumerate(items))
-
 def parentalSets(items, item, depth):
     """Iterate over all "Parental Sets".
 
@@ -113,7 +110,11 @@ class EmRes(CsiResult):
                 var = [var[l-i,0].tolist() for i,l in enumerate(ilocs)]
             )
 
-    def write_hdf5(self, grp, itemmap):
+    def write_hdf5(self, file, num):
+        grp = file.create_group("/%i" % (num+1,))
+
+        itemmap = self.em.csi._itemmap
+
         ptype = h5.special_dtype(vlen=h5.special_dtype(enum=('i', itemmap)))
 
         pset = np.array([np.array([itemmap[i] for i in pi],dtype=np.int32)
@@ -320,6 +321,8 @@ class Csi(object):
     "Perform CSI analysis on the provided data"
     def __init__(self, data):
         self.data = data
+        self._items = data.index.tolist()
+        self._itemmap = dict((b,a) for (a,b) in enumerate(self._items))
 
         n = [a for a,b in data.columns.values]
         ix = np.flatnonzero(np.array([a==b for a,b in zip(n, n[1:])]))
@@ -340,32 +343,38 @@ class Csi(object):
         return [mk(a,l) for a,l in it.groupby(enumerate(self.data.columns),c1)]
 
     def get_items(self):
-        return self.data.index.tolist()
+        return self._items
+
+    def item_to_num(self, item):
+        return self._itemmap[item]
 
     def allParents(self, item, depth):
         "Utility function to calculate the parental set of the given item"
-        return list(parentalSets(self.get_items(), item, depth))
+        return list(parentalSets(self._items, item, depth))
 
     def getEm(self):
         "For getting at a MAP estimate via expectation-maximisation."
         return CsiEm(self)
 
-    def to_mindom(self, res):
-        items = self.get_items()
-        return dict(
-            items=items,
-            results=[r.to_mindom(items) for r in res])
-
     def to_dom(self, res):
         "@res is a list of objects derived from CsiResult's"
         reps = self.get_replicates()
 
-        data = [[self.data.iloc[i,r.iloc].values.tolist() for r in reps]
-                for i in range(self.data.shape[0])]
+        data = [self.data.iloc[:,r.iloc].values.tolist() for r in reps]
 
         return dict(replicates=[dict(id=r.name,time=r.time) for r in reps],
-                    items=[dict(id=n,data=d) for (n,d) in zip(self.get_items(),data)],
+                    items=[dict(id=n,data=d) for (n,d) in zip(self._items,data)],
                     results=[r.to_dom() for r in res])
+
+    def write_hdf5(self, file):
+        file.create_dataset('/items', data=np.string_(self._items))
+
+        data = file.create_group('/data')
+        for i,r in enumerate(self.get_replicates()):
+            d = self.data.iloc[:,r.iloc]
+            df = data.create_dataset("%i" % (i+1,),data=d.values)
+            df.attrs["replicate"] = r.name
+            df.attrs["time"] = r.time
 
 def loadData(path):
     with open(path) as fd:

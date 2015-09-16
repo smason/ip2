@@ -5,6 +5,8 @@ import optparse
 import csv
 import re
 import itertools as it
+
+import h5py as h5
 import json
 
 import logging
@@ -48,8 +50,8 @@ def cmdparser(args):
                    help="write PDF output to FILE", metavar='FILE')
     out.add_option('--json',dest='jsonoutput',
                    help="write JSON output to FILE", metavar='FILE')
-    out.add_option('--minpickle',dest='minpickleout',
-                   help="pickle minimal output to FILE", metavar='FILE')
+    out.add_option('--hdf5',dest='hdf5output',
+                   help="write HDF5 output to FILE", metavar='FILE')
 
     # define compatibility options
     op.add_option_group(compat)
@@ -113,10 +115,10 @@ def main(args=None):
     else:
         jsonoutput = None
 
-    if op.minpickleout:
-        minpickleout = open(op.minpickleout,'wb')
+    if op.hdf5output:
+        hdf5output = h5.File(op.hdf5output,'w')
     else:
-        minpickleout = None
+        hdf5output = None
 
     # load the data from disk
     inp = csi.loadData(fname[0])
@@ -151,6 +153,9 @@ def main(args=None):
     cc = csi.Csi(inp)
     em = cc.getEm()
 
+    if hdf5output:
+        cc.write_hdf5(hdf5output)
+
     if op.weighttrunc:
         val = float(op.weightrunc)
         if 0 < val < 1:
@@ -173,16 +178,14 @@ def main(args=None):
             sys.exit(1)
 
     results = []
-    for res in csi.runCsiEm(em, genes, lambda gene: cc.allParents(gene,depth), numprocs):
+    for i,res in enumerate(csi.runCsiEm(em, genes, lambda gene: cc.allParents(gene,depth), numprocs)):
         res.writeCsv(csvout)
         results.append(res)
+        if hdf5output:
+            res.write_hdf5(hdf5output, i)
 
     if jsonoutput is not None:
         json.dump(cc.to_dom(results), jsonoutput)
-
-    if minpickleout is not None:
-        import pickle
-        pickle.dump(cc.to_mindom(results), minpickleout)
 
     # plot in pdf?  an interactive html page may be better!
 
