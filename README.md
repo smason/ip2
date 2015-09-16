@@ -89,7 +89,7 @@ To connect to the iPlant servers, you need the following details:
 
 These are the minimal Python libraries that would need to be installed:
 
-    pip install numpy scipy pandas matplotlib GPy
+    pip install numpy scipy pandas h5py matplotlib GPy
 
 In order to run an interactive exploration in iPython, these are also
 needed [google]:
