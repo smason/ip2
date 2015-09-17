@@ -144,8 +144,8 @@ def main(args=None):
     else:
         missing = np.setdiff1d(genes, inp.index)
         if len(missing) > 0:
-            sys.stderr.write("Error: The following genes were not found: %s\n" %
-                             ', '.join(missing))
+            sys.stderr.write("Error: The following genes were not found: {missing}\n".format(
+                missing=', '.join(missing)))
             sys.exit(1)
 
     # TODO: how does the user specify the parental set?
@@ -173,8 +173,8 @@ def main(args=None):
         elif op.initweights == 'weighted':
             em.sampleinitweights = True
         else:
-            sys.stderr.write("Error: Unrecognised initial weight mode: %s\n" %
-                             op.initweights)
+            sys.stderr.write("Error: Unrecognised initial weight mode: {initweights}\n".join(
+                initweights=op.initweights))
             sys.exit(1)
 
     results = []

@@ -66,7 +66,8 @@ class CsiError(Exception):
 
 class CsiEmFailed(CsiError):
     def __init__(self, res):
-        super(CsiEmFailed, self).__init__("Failed to optimise parameters (%s)" % [repr(res.message)])
+        super(CsiEmFailed, self).__init__("Failed to optimise parameters ({msg})".format(
+            msg=repr(res.message)))
         self.res = res
 
 class CsiResult(object):
@@ -111,7 +112,7 @@ class EmRes(CsiResult):
             )
 
     def write_hdf5(self, file, num):
-        grp = file.create_group("/%i" % (num+1,))
+        grp = file.create_group(str(num+1))
 
         itemmap = self.em.csi._itemmap
 
@@ -372,7 +373,7 @@ class Csi(object):
         data = file.create_group('/data')
         for i,r in enumerate(self.get_replicates()):
             d = self.data.iloc[:,r.iloc]
-            df = data.create_dataset("%i" % (i+1,),data=d.values)
+            df = data.create_dataset(str(i+1),data=d.values)
             df.attrs["replicate"] = r.name
             df.attrs["time"] = r.time
 
