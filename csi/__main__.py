@@ -155,6 +155,7 @@ def main(args=None):
 
     if hdf5output:
         cc.write_hdf5(hdf5output)
+        hdf5output.flush()
 
     if op.weighttrunc:
         val = float(op.weightrunc)
@@ -183,6 +184,7 @@ def main(args=None):
         results.append(res)
         if hdf5output:
             res.write_hdf5(hdf5output, i)
+            hdf5output.flush()
 
     if jsonoutput is not None:
         json.dump(cc.to_dom(results), jsonoutput)

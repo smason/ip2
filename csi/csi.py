@@ -229,6 +229,8 @@ class CsiEm(object):
             self.pool = None
             self.worker = CsiEmWorker(self.X, self.Y, self.pset)
         else:
+            if self.pool is not None:
+                self.pool.terminate()
             self.pool = mp.Pool(poolsize, _pool_init,
                                 (self.X, self.Y, self.pset))
 
