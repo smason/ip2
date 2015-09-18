@@ -115,16 +115,18 @@ class EmRes(CsiResult):
         grp = file.create_group(str(num+1))
 
         itemmap = self.em.csi._itemmap
-
-        ptype = h5.special_dtype(vlen=h5.special_dtype(enum=('i', itemmap)))
+        ptype = h5.special_dtype(enum=('i', itemmap))
 
         pset = np.array([np.array([itemmap[i] for i in pi],dtype=np.int32)
                          for pi,gi in self.pset],
-                        dtype=ptype)
+                        dtype=h5.special_dtype(vlen=ptype))
 
         ga = grp.attrs
         ga['restype']     = 'EM'
-        ga['item']        = self.pset[0][1]
+        ga['item']        = np.array([itemmap[self.pset[0][1]]],
+                                     dtype=ptype)
+
+
         ga['hyperparams'] = self.hypers
 
         grp.create_dataset('loglik',data=self.ll)
