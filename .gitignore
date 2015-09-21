@@ -90,3 +90,5 @@ target/
 
 # iPython Notebooks
 .ipynb_checkpoints/
+
+.DS_Store
