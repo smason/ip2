@@ -112,8 +112,6 @@ class EmRes(CsiResult):
             )
 
     def write_hdf5(self, file, num):
-        grp = file.create_group(str(num+1))
-
         itemmap = self.em.csi._itemmap
         ptype = h5.special_dtype(enum=('i', itemmap))
 
@@ -121,13 +119,13 @@ class EmRes(CsiResult):
                          for pi,gi in self.pset],
                         dtype=h5.special_dtype(vlen=ptype))
 
+        grp = file.create_group("result/{n}".format(n=num+1))
+
         ga = grp.attrs
+        ga['hyperparams'] = self.hypers
         ga['restype']     = 'EM'
         ga['item']        = np.array([itemmap[self.pset[0][1]]],
                                      dtype=ptype)
-
-
-        ga['hyperparams'] = self.hypers
 
         grp.create_dataset('loglik',data=self.ll)
         grp.create_dataset('weight',data=self.weights)
@@ -372,9 +370,9 @@ class Csi(object):
                     results=[r.to_dom() for r in res])
 
     def write_hdf5(self, file):
-        file.create_dataset('/items', data=np.string_(self._items))
+        file.create_dataset('items', data=np.string_(self._items))
 
-        data = file.create_group('/data')
+        data = file.create_group('data')
         for i,r in enumerate(self.get_replicates()):
             d = self.data.iloc[:,r.iloc]
             df = data.create_dataset(str(i+1),data=d.values)
