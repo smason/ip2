@@ -22,8 +22,9 @@
     max-height: 15rem;
     overflow-y:scroll;
 }
-#data {
+#expdata, #parentplots {
     min-height: 20rem;
+    font: 10px sans-serif;
 }
 
 .node {
@@ -60,8 +61,4 @@
   fill: none;
   stroke: #000;
   shape-rendering: crispEdges;
-}
-
-#data {
-  font: 10px sans-serif;
 }

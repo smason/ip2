@@ -251,7 +251,7 @@ app.controller('NetworkController', function($scope, $rootScope, Items, Marginal
 })
 
 app.controller('ExpressionController', function($scope, Items, MarginalParents) {
-    var parent = d3.select("#data");
+    var parent = d3.select("#expdata");
 
     var margin = {top: 0, right: 50, bottom: 20, left: 40},
 	cwidth  = parent.node().clientWidth,  width  = cwidth - margin.left - margin.right,
@@ -262,13 +262,11 @@ app.controller('ExpressionController', function($scope, Items, MarginalParents) 
 	return [r[0] - d, r[1] + d]
     }
 
-    var xRange = rangeScale([0, width],-0.02),
-	x = d3.scale.linear()
-	.range(xRange);
+    var x = d3.scale.linear()
+	.range(rangeScale([0, width],-0.02));
 
-    var yRange = rangeScale([height, 0],-0.04),
-	y = d3.scale.linear()
-	.range(yRange);
+    var y = d3.scale.linear()
+	.range(rangeScale([height, 0],-0.04));
 
     var color = d3.scale.category10();
 
@@ -393,7 +391,7 @@ app.controller('ExpressionController', function($scope, Items, MarginalParents) 
       .call(xAxis)
 	.append("text")
 	.attr("class", "label")
-	.attr("x", xRange[1])
+	.attr("x", x.range()[1])
 	.attr("y", -2)
 	.style("text-anchor", "end")
 	.text("Time");
@@ -404,13 +402,13 @@ app.controller('ExpressionController', function($scope, Items, MarginalParents) 
       .append("text")
 	.attr("class", "label")
 	.attr("transform", "rotate(-90)")
-	.attr("x", -yRange[1])
+	.attr("x", -y.range()[1])
 	.attr("y", 4)
 	.attr("dy", ".71em")
 	.style("text-anchor", "end")
 	.text("Expression");
 
-    addDataSet(Items['Gene6'])
+    addDataSet(Items['Gene9'])
 
     svg.append('clipPath')
 	.attr('id', 'plotAreaClip')
@@ -435,4 +433,116 @@ app.controller('ExpressionController', function($scope, Items, MarginalParents) 
 	.attr("dy", ".35em")
 	.style("text-anchor", "start")
 	.text(function(d) { return d; });
+})
+
+app.controller('PlotTargetParents', function($scope, Items, MarginalParents) {
+    var parent = d3.select("#parentplots");
+
+    var outmargin = {top: 15, right: 5, bottom: 10, left: 30};
+    var inmargin  = {top: 5, right: 5, bottom: 5, left: 10};
+
+    var cwidth  = parent.node().clientWidth, cheight = parent.node().clientHeight;
+
+    var svg = parent
+        .attr("tabindex", 3)
+        .append("svg")
+          .attr("width", cwidth)
+          .attr("height", cheight)
+
+    var color = d3.scale.category10();
+
+    var rangeScale = function (r, m) {
+	var d = (r[1] - r[0]) * m;
+	return [r[0] - d, r[1] + d]
+    }
+
+    for (var y = 0; y < 5; y++) {
+	for (var x = 0; x < 5; x++) {
+	    var height  = (cheight-outmargin.top-outmargin.bottom-inmargin.bottom)/5,
+		width   = (cwidth-outmargin.left-outmargin.right-inmargin.right)/5,
+		top     = height*y+outmargin.top+inmargin.top,
+		iheight = height-inmargin.bottom-inmargin.top,
+		left    = width*x+outmargin.left+inmargin.left,
+		iwidth  = width-inmargin.right-inmargin.left;
+
+	    var plt = svg.append("g")
+		.attr("transform", "translate(" + left + "," + top + ")");
+
+	    var xs = d3.scale.linear()
+		.range(rangeScale([0, iwidth],-0.02));
+
+	    var ys = d3.scale.linear()
+		.range(rangeScale([iheight, 0],-0.02));
+
+	    xs.domain([0,1000])
+
+	    if (y == 0) {
+		plt.append("text")
+		    .attr("x",iwidth/2)
+		    .text(csires.replicates[x].id)
+		    .style("text-anchor","middle")
+	    }
+	    if (y == 4) {
+		var xAxis = d3.svg.axis()
+		    .scale(xs)
+		    .ticks(5)
+		    .orient("bottom");
+
+		plt.append("g")
+		    .attr("class", "x axis")
+		    .attr("transform", "translate(0," + iheight + ")")
+		    .call(xAxis)
+	    }
+
+	    if (x == 0) {
+		var yAxis = d3.svg.axis()
+		    .scale(ys)
+		    .ticks(4)
+		    .orient("left");
+
+		plt.append("g")
+		    .attr("class", "y axis")
+		    .call(yAxis)
+	    }
+
+	    plt.append("g")
+		.attr("class", "x y axis")
+		.append("path")
+		.attr("d",
+		      "M0,0"+
+		      "L0,"+iheight+
+		      "L"+iwidth+","+iheight)
+
+	    dx = csires.replicates[x].time
+	    dy = csires.items[y].data[x]
+
+	    var l = plt.append("path")
+		.attr("class", "line")
+		.attr("d", function(d) {
+		    var s = "M"+xs(dx[0])+","+ys(dy[0]);
+		    for (var i = 1; i < dx.length; i++) {
+			s += "L"+xs(dx[i])+","+ys(dy[i]);
+		    }
+		    return s;
+		})
+		.attr("fill", "none")
+		.attr("stroke", function(d) { return color(x); })
+		.style("stroke-width", 2);
+
+	    dy = csires.items[6].data[x]
+
+	    var l = plt.append("path")
+		.attr("class", "line")
+		.attr("d", function(d) {
+		    var s = "M"+xs(dx[0])+","+ys(dy[0]);
+		    for (var i = 1; i < dx.length; i++) {
+			s += "L"+xs(dx[i])+","+ys(dy[i]);
+		    }
+		    return s;
+		})
+		.attr("fill", "none")
+		.attr("stroke", 'black')
+		.style("stroke-width", 1);
+	}
+    }
 })

@@ -34,7 +34,7 @@ def parentalSets(items, item, depth):
         for subset in it.combinations(items, i):
             yield (list(subset),item)
 
-def logexp_optimise(fn, x):
+def logexp_optimise(fn, x, **kwargs):
     """Our 'LogExp' transform is taken from GPy and ensures that
     parameters are always greater than zero.
     """
@@ -44,7 +44,8 @@ def logexp_optimise(fn, x):
         # get gradients back to our space
         grad *= logexp_gradientfactor(theta)
         return (y,grad)
-    res = spo.minimize(transform, natural_to_logexp(x), jac=True)
+    res = spo.minimize(transform, natural_to_logexp(x), jac=True,
+                       **kwargs)
     res.x = logexp_to_natural(res.x)
     return res
 
@@ -224,6 +225,7 @@ class CsiEm(object):
         self.pset = pset
         self.hypers = sp.exp(sp.randn(3))
         self.weights = w
+        self.tol = 0.1
 
         if poolsize is None:
             self.pool = None
@@ -276,7 +278,7 @@ class CsiEm(object):
         """Re-optimise hyper-parameters of the given model, throwing exception
         on failure.
         """
-        res = logexp_optimise(self._optfn, self.hypers)
+        res = logexp_optimise(self._optfn, self.hypers, tol=self.tol)
         if not res.success:
             raise CsiEmFailed(res)
         self.hypers = res.x
@@ -308,8 +310,11 @@ class CsiEm(object):
         w0 = self.weights
         self.weights = w
         # calculate the KL divergence
-        kl = w * np.log(w / w0)
-        return kl.sum()
+        kl = (w * np.log(w / w0)).sum()
+
+        # update optimiser tolerance
+        self.tol = min(self.tol,max(kl/3,1e-4))
+        return kl
 
     def getResults(self):
         return EmRes(self)
@@ -395,8 +400,8 @@ def runCsiEm(em, genes, fnpset, poolsize=None):
         em.setup(fnpset(gene), poolsize)
 
         for ittr in range(1, 20):
-            logger.debug("%2i: optimising hyperparameters",
-                         ittr)
+            logger.debug("%2i: optimising hyperparameters (tol=%g)",
+                         ittr, em.tol)
             em.optimiseHypers()
             logger.debug("%2i: recalculating weights",
                          ittr)
