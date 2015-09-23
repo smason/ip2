@@ -441,40 +441,98 @@ app.controller('PlotTargetParents', function($scope, Items, MarginalParents) {
     var outmargin = {top: 15, right: 5, bottom: 10, left: 30};
     var inmargin  = {top: 5, right: 5, bottom: 5, left: 10};
 
-    var cwidth  = parent.node().clientWidth, cheight = parent.node().clientHeight;
+    var cwidth = parent.node().clientWidth,
+	cheight = parent.node().clientHeight;
 
     var svg = parent
         .attr("tabindex", 3)
-        .append("svg")
-          .attr("width", cwidth)
-          .attr("height", cheight)
+      .append("svg")
+        .attr("width", cwidth)
+        .attr("height", cheight)
 
     var color = d3.scale.category10();
 
     var rangeScale = function (r, m) {
 	var d = (r[1] - r[0]) * m;
-	return [r[0] - d, r[1] + d]
+	return [r[0] + d, r[1] - d]
     }
+
+    var height  = (cheight-outmargin.top-outmargin.bottom-inmargin.bottom)/5,
+	width   = (cwidth-outmargin.left-outmargin.right-inmargin.right)/5,
+	iheight = height-inmargin.bottom-inmargin.top,
+	iwidth  = width-inmargin.right-inmargin.left;
+
+    var xs = d3.scale.linear()
+	.range(rangeScale([0, iwidth], 0.02));
+
+    var ys = d3.scale.linear()
+	.range(rangeScale([iheight, 0], 0.02));
+
+    xs.domain([0,1000])
+
+    var	plotLine = function(xdata,ydata,xscale,yscale) {
+	var stroke = "black", width = 1;
+	function plot(g) { g.each(function() {
+	    g = d3.select(this)
+
+	    var l = g.append("path")
+		.attr("class", "line")
+		.attr("d", "M"+d3.zip(
+		    xdata.map(xscale),
+		    ydata.map(yscale)).join("L"))
+		.attr("fill", "none")
+		l.attr("stroke", stroke)
+		l.attr("stroke-width", width)
+
+	    return l;
+	})};
+	plot.color = function(x) {
+	    stroke = x;
+	    return plot;
+	};
+	plot.width = function(x) {
+	    width = +x;
+	    return plot;
+	};
+	return plot;
+    };
+
+    var	plotGpEst = function(time, muvarlik) {
+	var stroke = "black", width = 1;
+	function plot(g) { g.each(function() {
+
+	})};
+	return plot;
+    };
 
     for (var y = 0; y < 5; y++) {
 	for (var x = 0; x < 5; x++) {
-	    var height  = (cheight-outmargin.top-outmargin.bottom-inmargin.bottom)/5,
-		width   = (cwidth-outmargin.left-outmargin.right-inmargin.right)/5,
-		top     = height*y+outmargin.top+inmargin.top,
-		iheight = height-inmargin.bottom-inmargin.top,
-		left    = width*x+outmargin.left+inmargin.left,
-		iwidth  = width-inmargin.right-inmargin.left;
+	    var top  = height*y+outmargin.top+inmargin.top,
+		left = width*x+outmargin.left+inmargin.left;
+
+	    var time = csires.replicates[x].time,
+		target = csires.items[6].data[x],
+		parent = csires.items[y].data[x];
 
 	    var plt = svg.append("g")
-		.attr("transform", "translate(" + left + "," + top + ")");
+		.attr("transform", "translate(" + left + "," + top + ")")
+		.call(plotLine(time,target,xs,ys)
+		      .width(1))
 
-	    var xs = d3.scale.linear()
-		.range(rangeScale([0, iwidth],-0.02));
+	    if (y == 0) {
 
-	    var ys = d3.scale.linear()
-		.range(rangeScale([iheight, 0],-0.02));
+	    } else {
+		plt.call(plotLine(time,parent,xs,ys)
+			 .color(color(y))
+			 .width(2))
+	    }
 
-	    xs.domain([0,1000])
+	    plt.append("g")
+		.attr("class", "x y axis")
+		.append("path")
+		.attr("d",
+		      "M0,0L"+
+		      [[0,iheight],[iwidth,iheight]].join("L"))
 
 	    if (y == 0) {
 		plt.append("text")
@@ -482,6 +540,7 @@ app.controller('PlotTargetParents', function($scope, Items, MarginalParents) {
 		    .text(csires.replicates[x].id)
 		    .style("text-anchor","middle")
 	    }
+
 	    if (y == 4) {
 		var xAxis = d3.svg.axis()
 		    .scale(xs)
@@ -505,44 +564,6 @@ app.controller('PlotTargetParents', function($scope, Items, MarginalParents) {
 		    .call(yAxis)
 	    }
 
-	    plt.append("g")
-		.attr("class", "x y axis")
-		.append("path")
-		.attr("d",
-		      "M0,0"+
-		      "L0,"+iheight+
-		      "L"+iwidth+","+iheight)
-
-	    dx = csires.replicates[x].time
-	    dy = csires.items[y].data[x]
-
-	    var l = plt.append("path")
-		.attr("class", "line")
-		.attr("d", function(d) {
-		    var s = "M"+xs(dx[0])+","+ys(dy[0]);
-		    for (var i = 1; i < dx.length; i++) {
-			s += "L"+xs(dx[i])+","+ys(dy[i]);
-		    }
-		    return s;
-		})
-		.attr("fill", "none")
-		.attr("stroke", function(d) { return color(x); })
-		.style("stroke-width", 2);
-
-	    dy = csires.items[6].data[x]
-
-	    var l = plt.append("path")
-		.attr("class", "line")
-		.attr("d", function(d) {
-		    var s = "M"+xs(dx[0])+","+ys(dy[0]);
-		    for (var i = 1; i < dx.length; i++) {
-			s += "L"+xs(dx[i])+","+ys(dy[i]);
-		    }
-		    return s;
-		})
-		.attr("fill", "none")
-		.attr("stroke", 'black')
-		.style("stroke-width", 1);
 	}
     }
 })
