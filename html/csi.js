@@ -2,10 +2,14 @@ var app = angular.module("CsiResults",[]);
 
 app.factory('Items', function () {
     var items =	{};
+    var time = csires.replicates.map(function(d) {
+	return d.time;
+    });
     angular.forEach(csires.items, function(item,i) {
 	item.ord  = i;
 	item.name = item.id;
 	item.selected = true;
+	item.time = time;
 
 	this[item.id] = item;
     }, items);
@@ -59,7 +63,7 @@ app.filter('parents', function() {
 
 app.controller('ItemController', function($scope, Items) {
     $scope.items = Items;
-})
+});
 
 app.filter('ParentalSetFilter', function() {
     return function(input, thresh) {
@@ -331,8 +335,7 @@ app.controller('ExpressionController', function($scope, Items, MarginalParents) 
 		}
 		return s;
 	    })
-	    .attr("fill", "none")
-	    .attr("stroke", function(d) { return color(d.rep); })
+	    .style("stroke", function(d) { return color(d.rep); })
             .style("stroke-width", 2);
 
 	var predidx = 0;
@@ -369,7 +372,7 @@ app.controller('ExpressionController', function($scope, Items, MarginalParents) 
 		return ("M"+xt+","+y(d.mu+2*Math.sqrt(d.var+d.sn2))+
 			"L"+xt+","+y(d.mu-2*Math.sqrt(d.var+d.sn2)))
 	    })
-	    .attr("stroke", function(d) { return color(d.rep); })
+	    .style("stroke", function(d) { return color(d.rep); })
             .style("stroke-width", function(d) { return d.weight; });
 
 	predSel.append("path")
@@ -381,7 +384,7 @@ app.controller('ExpressionController', function($scope, Items, MarginalParents) 
 			"M"+xt+","+y(d.mu+2*Math.sqrt(d.var))+
 			"L"+xt+","+y(d.mu-2*Math.sqrt(d.var)))
 	    })
-	    .attr("stroke", function(d) { return color(d.rep); })
+	    .style("stroke", function(d) { return color(d.rep); })
             .style("stroke-width", function(d) { return d.weight*2; });
     }
 
@@ -435,14 +438,99 @@ app.controller('ExpressionController', function($scope, Items, MarginalParents) 
 	.text(function(d) { return d; });
 })
 
+var plotLine = function(x,y) {
+    var stroke, width = 1;
+    function plot(g) { g.each(function() {
+	d3.select(this).append("path")
+	    .attr("class", "line")
+	    .attr("d", "M"+d3.zip(x,y).join("L"))
+	    .style("stroke-width", width)
+	    .style("stroke", stroke)
+    })};
+    plot.color = function(x) {
+	stroke = x;
+	return plot;
+    };
+    plot.width = function(x) {
+	width = +x;
+	return plot;
+    };
+    return plot;
+};
+
+var plotGpEst = function(time, muvarlik, yscale) {
+    var stroke = "black", width = 1;
+    function plot(g) { g.each(function() {
+	var g = d3.select(this);
+	var l = g.append("g").selectAll("path")
+	    .data(muvarlik)
+	    .enter();
+
+	l.append("path")
+	    .attr("class", "line gpestimate")
+	    .style("stroke-width",width)
+	    .attr("d",function(d,i) {
+		var sd = Math.sqrt(d.var)*2,
+		    ti = time[i],
+		    y0 = yscale(d.mu);
+		return ("M"+(ti-3)+","+y0+
+			"L"+(ti+2)+","+y0+
+			"M"+ti+","+yscale(d.mu-sd)+
+			"L"+ti+","+yscale(d.mu+sd))
+	    });
+
+	l.append("path")
+	    .attr("class", "line gpestimate")
+	    .style("stroke-width",width/2)
+	    .attr("d",function(d,i) {
+		var sd = Math.sqrt(d.var+d.lik)*2;
+		return ("M"+time[i]+","+yscale(d.mu-sd)+
+			"L"+time[i]+","+yscale(d.mu+sd));
+	    });
+    })};
+    plot.width = function(x) {
+	width = +x;
+	return plot;
+    };
+    return plot;
+};
+
 app.controller('PlotTargetParents', function($scope, Items, MarginalParents) {
+    var item = Items['Gene9'];
+
+    var preds = [], numpred = 0;
+    angular.forEach(csires.results, function(res) {
+	if(res.item == item.name) {
+	    angular.forEach(res.weights, function(weight,pset) {
+		if (weight > 0.01) {
+		    predi = res.predictions[pset];
+		    angular.forEach(csires.replicates, function(rep,repn) {
+			x = []
+			for (var i = 1; i < rep.time.length; i++) {
+			    x.push({time:rep.time[i],
+				    mu:predi.mu[repn][i-1],
+				    var:predi.var[repn][i-1],
+				    lik:res.hyperparams[2]})
+			}
+			x.rep =	repn;
+			x.off =	numpred;
+			preds.push(x);
+		    });
+		    numpred += 1;
+		}
+	    });
+	}
+    });
+
     var parent = d3.select("#parentplots");
 
     var outmargin = {top: 15, right: 5, bottom: 10, left: 30};
     var inmargin  = {top: 5, right: 5, bottom: 5, left: 10};
 
     var cwidth = parent.node().clientWidth,
-	cheight = parent.node().clientHeight;
+	cheight = (70+inmargin.top+inmargin.bottom)*5+outmargin.top+outmargin.bottom;
+
+    // cheight = parent.node().clientHeight;
 
     var svg = parent
         .attr("tabindex", 3)
@@ -470,59 +558,55 @@ app.controller('PlotTargetParents', function($scope, Items, MarginalParents) {
 
     xs.domain([0,1000])
 
-    var	plotLine = function(xdata,ydata,xscale,yscale) {
-	var stroke = "black", width = 1;
-	function plot(g) { g.each(function() {
-	    g = d3.select(this)
+    var xAxis = d3.svg.axis()
+	.scale(xs)
+	.ticks(5)
+	.orient("bottom");
 
-	    var l = g.append("path")
-		.attr("class", "line")
-		.attr("d", "M"+d3.zip(
-		    xdata.map(xscale),
-		    ydata.map(yscale)).join("L"))
-		.attr("fill", "none")
-		l.attr("stroke", stroke)
-		l.attr("stroke-width", width)
-
-	    return l;
-	})};
-	plot.color = function(x) {
-	    stroke = x;
-	    return plot;
-	};
-	plot.width = function(x) {
-	    width = +x;
-	    return plot;
-	};
-	return plot;
-    };
-
-    var	plotGpEst = function(time, muvarlik) {
-	var stroke = "black", width = 1;
-	function plot(g) { g.each(function() {
-
-	})};
-	return plot;
-    };
+    var yAxis = d3.svg.axis()
+	.scale(ys)
+	.ticks(4)
+	.orient("left");
 
     for (var y = 0; y < 5; y++) {
 	for (var x = 0; x < 5; x++) {
 	    var top  = height*y+outmargin.top+inmargin.top,
 		left = width*x+outmargin.left+inmargin.left;
 
-	    var time = csires.replicates[x].time,
-		target = csires.items[6].data[x],
+	    var time   = item.time[x],
+		target = item.data[x],
 		parent = csires.items[y].data[x];
 
 	    var plt = svg.append("g")
-		.attr("transform", "translate(" + left + "," + top + ")")
-		.call(plotLine(time,target,xs,ys)
-		      .width(1))
+		.attr("transform", "translate(" + left + "," + top + ")");
+
+	    var clipid="gpclip"+x+"."+y;
+	    plt.append("clipPath")
+		.attr("id",clipid)
+		.append("rect")
+		.attr("width",iwidth)
+		.attr("height",iheight);
+
+	    var	clip = plt.append("g")
+		.attr("class","plotarea")
+		.attr("clip-path", "url(#"+clipid+")")
+
+	    clip.call(plotLine(time.map(xs),target.map(ys))
+		     .width(1))
 
 	    if (y == 0) {
-
+		for (var i = 0; i < preds.length; i++) {
+		    if (preds[i].rep !=	x)
+			continue;
+		    var off = preds[i].off-numpred/2;
+		    var time = preds[i].map(function(d) {
+			return xs(d.time)+off;
+		    });
+		    clip.call(plotGpEst(time, preds[i], ys))
+		}
 	    } else {
-		plt.call(plotLine(time,parent,xs,ys)
+		clip.call(plotLine(time.map(xs),
+				  parent.map(ys))
 			 .color(color(y))
 			 .width(2))
 	    }
@@ -542,11 +626,6 @@ app.controller('PlotTargetParents', function($scope, Items, MarginalParents) {
 	    }
 
 	    if (y == 4) {
-		var xAxis = d3.svg.axis()
-		    .scale(xs)
-		    .ticks(5)
-		    .orient("bottom");
-
 		plt.append("g")
 		    .attr("class", "x axis")
 		    .attr("transform", "translate(0," + iheight + ")")
@@ -554,11 +633,6 @@ app.controller('PlotTargetParents', function($scope, Items, MarginalParents) {
 	    }
 
 	    if (x == 0) {
-		var yAxis = d3.svg.axis()
-		    .scale(ys)
-		    .ticks(4)
-		    .orient("left");
-
 		plt.append("g")
 		    .attr("class", "y axis")
 		    .call(yAxis)
