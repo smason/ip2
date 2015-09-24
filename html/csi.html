@@ -43,25 +43,24 @@
 	  </span>
 	</div>
       </div><div id="graphpset"><div id="graph" ng-controller="NetworkController">
-	</div><div id="parental-set" ng-controller="ParentalSetController">
-	  <table class="pure-table" style="display: inline-block; vertical-align: top;">
-	    <thead>
-	      <tr>
-		<td>Item</td>
-		<td>Parental Set</td>
-		<td>Weight</td>
-	      </tr>
-	    </thead>
-	    <tbody>
-	      <tr ng-repeat="pset in ParentalSets | ParentalSetFilter : weightthresh | orderBy : ['item.ord','-weight']">
-		<td>{{pset.item.name}}</td>
-		<td>{{pset.parents | parents}}</td>
-		<td>{{pset.weight | weight}}</td>
-	      </tr>
-	    </tbody>
-	  </table>
-	  Minimum Weight: <input type="number" min="0.0", max="1.0" step="0.1" ng-model="weightthresh">
-	</div>
+      </div></div><div id="parental-set" ng-controller="ParentalSetController">
+	Minimum Weight: <input type="number" min="0.0", max="1.0" step="0.1" ng-model="weightthresh">
+	<table class="pure-table">
+	  <thead>
+	    <tr>
+	      <td>Item</td>
+	      <td>Weight</td>
+	      <td>Parental Set</td>
+	    </tr>
+	  </thead>
+	  <tbody>
+	    <tr ng-repeat="pset in ParentalSets | ParentalSetFilter : weightthresh | orderBy : ['item.ord','-weight']">
+	      <td>{{pset.item.name}}</td>
+	      <td>{{pset.weight | weight}}</td>
+	      <td>{{pset.parents | parents}}</td>
+	    </tr>
+	  </tbody>
+	</table>
       </div>
       <div id="parentplots" ng-controller="PlotTargetParents"></div></div>
     <div id="footer">

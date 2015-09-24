@@ -99,7 +99,7 @@ app.controller('NetworkController', function($scope, $rootScope, Items, Marginal
           .attr("width", width)
           .attr("height", height);
 
-    // build the arrow (put on the end using CSS)
+    // build the arrow
     svg.append("svg:defs")
 	.append("marker")    // This section adds in the arrows
 	.attr("id", "arrow")
@@ -166,6 +166,7 @@ app.controller('NetworkController', function($scope, $rootScope, Items, Marginal
         .attr("class", "link")
 	.selectAll()
         .data(edges).enter().append("path")
+        .style("marker-end", "url(#arrow)")
         .style("stroke-width", function(l) { return 2 * l.mpar.prob; });
 
     var nodes = vis.append("g")
