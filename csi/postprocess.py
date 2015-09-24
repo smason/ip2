@@ -5,43 +5,56 @@ import h5py as h5
 
 import csi.gp as gp
 
-class csi_res(object):
-    def __init__(mod, res, cutoff):
-        self.res = res
-
-        self.target = res.attrs['item']
-        self.psets  = res['parents'][:]
-        self.weight = res['weight'][:]
-
-        self.models = []
-
-        for i in np.nonzero(weight >= cutoff)[0]:
-            pi = pars[i]
-            wi = weight[i]
-
-            # data for (parent,target)
-            dp,dt = getPsetData(self.target, pi)
-
-            self.models.append(gp.rbf(dp,dt,hypers))
-
-    def
-
 class csi_mod(object):
-    def __init__(hdf5file):
-        self.fd = h5.File("dream-trunc3.h5")
+    def __init__(self, hdf5path):
+        self.fd = h5.File(hdf5path)
 
-        self.data  = [d for _,d self.fd['data'].items()]
-        self.items = self.fd['items']
+        self.data  = [d[:] for _,d in self.fd['data'].items()]
+        self.items = [s.decode('utf8') for s in self.fd['items']]
+        self.time  = [d.attrs["time"] for _,d in self.fd['data'].items()]
 
-    def get_pset_data(target, pset):
-        pa = [] # parent array
-        ta = [] # target array
-        for d in self.data:
-            pa.append(d[pset,:-1])
-            ta.append(d[[target],1:])
-        pa = np.hstack(pa)
-        ta = np.hstack(da)
-        return (pa.T,ta.T)
+class csi_res(object):
+    def __init__(self, mod, res):
+        self.mod = mod
+        self.res = mod.fd["{0}".format(res+1)]
 
-    def get_res(n):
-        return csi_res(self, self.fd[str(res)], cutoff)
+        self.hypers = self.res.attrs['hyperparams']
+        self.target = self.res.attrs['item'][0]
+
+        self.ll      = self.res["loglik"][:]
+        self.psets   = self.res['parents'][:]
+        self.weights = self.res['weight'][:]
+
+    def sort_psets(self):
+        ii = np.argsort(-self.ll)
+
+        self.ll      = self.ll[ii]
+        self.psets   = self.psets[ii]
+        self.weights = self.weights[ii]
+
+class csi_pred(object):
+    def __init__(self, res, pset, datasets=None):
+        self.target = res.target
+        self.hypers = res.hypers
+        self.pset   = pset
+        self.ix     = [self.target]+self.pset
+        self.iy     = [self.target]
+
+        if datasets is None:
+            datasets = res.mod.data
+
+        X = [] # parent array
+        Y = [] # target array
+        for d in datasets:
+            X.append(d[self.ix,:-1])
+            Y.append(d[self.iy,1:])
+        X = np.hstack(X).T
+        Y = np.hstack(Y).T
+        self.gp = gp.rbf(X,Y,self.hypers)
+
+    def predict1(self, expr):
+        return self.gp.predict(expr[None,self.ix])
+
+
+def __main__():
+    pass
