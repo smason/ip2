@@ -497,6 +497,14 @@ var plotGpEst = function(time, muvarlik, yscale) {
 
 app.controller('PlotTargetParents', function($scope, Items, MarginalParents) {
     var item = Items['Gene9'];
+    var mparents = [];
+    angular.forEach(MarginalParents, function(mp) {
+	if (item !== mp.item || mp.loglik < 0.1)
+	    return;
+	mparents.push(mp);
+    });
+
+    mparents.sort(function(a,b) { return a.loglik < b.loglik; })
 
     var preds = [], numpred = 0;
     angular.forEach(csires.results, function(res) {
@@ -512,8 +520,9 @@ app.controller('PlotTargetParents', function($scope, Items, MarginalParents) {
 				    var:predi.var[repn][i-1],
 				    lik:res.hyperparams[2]})
 			}
-			x.rep =	repn;
-			x.off =	numpred;
+			x.weight = weight;
+			x.rep    = repn;
+			x.off    = numpred;
 			preds.push(x);
 		    });
 		    numpred += 1;
@@ -524,11 +533,12 @@ app.controller('PlotTargetParents', function($scope, Items, MarginalParents) {
 
     var parent = d3.select("#parentplots");
 
-    var outmargin = {top: 15, right: 5, bottom: 10, left: 30};
+    var outmargin = {top: 15, right: 5, bottom: 10, left: 35};
     var inmargin  = {top: 5, right: 5, bottom: 5, left: 10};
 
-    var cwidth = parent.node().clientWidth,
-	cheight = (70+inmargin.top+inmargin.bottom)*5+outmargin.top+outmargin.bottom;
+    var nrows = mparents.length+1,
+	cwidth = parent.node().clientWidth,
+	cheight = (70+inmargin.top+inmargin.bottom)*nrows+outmargin.top+outmargin.bottom;
 
     // cheight = parent.node().clientHeight;
 
@@ -545,7 +555,7 @@ app.controller('PlotTargetParents', function($scope, Items, MarginalParents) {
 	return [r[0] + d, r[1] - d]
     }
 
-    var height  = (cheight-outmargin.top-outmargin.bottom-inmargin.bottom)/5,
+    var height  = (cheight-outmargin.top-outmargin.bottom-inmargin.bottom)/nrows,
 	width   = (cwidth-outmargin.left-outmargin.right-inmargin.right)/5,
 	iheight = height-inmargin.bottom-inmargin.top,
 	iwidth  = width-inmargin.right-inmargin.left;
@@ -568,14 +578,13 @@ app.controller('PlotTargetParents', function($scope, Items, MarginalParents) {
 	.ticks(4)
 	.orient("left");
 
-    for (var y = 0; y < 5; y++) {
+    for (var y = 0; y < nrows; y++) {
 	for (var x = 0; x < 5; x++) {
 	    var top  = height*y+outmargin.top+inmargin.top,
 		left = width*x+outmargin.left+inmargin.left;
 
 	    var time   = item.time[x],
-		target = item.data[x],
-		parent = csires.items[y].data[x];
+		target = item.data[x];
 
 	    var plt = svg.append("g")
 		.attr("transform", "translate(" + left + "," + top + ")");
@@ -592,7 +601,8 @@ app.controller('PlotTargetParents', function($scope, Items, MarginalParents) {
 		.attr("clip-path", "url(#"+clipid+")")
 
 	    clip.call(plotLine(time.map(xs),target.map(ys))
-		     .width(1))
+		      .color(color(x))
+		      .width(1))
 
 	    if (y == 0) {
 		for (var i = 0; i < preds.length; i++) {
@@ -602,13 +612,26 @@ app.controller('PlotTargetParents', function($scope, Items, MarginalParents) {
 		    var time = preds[i].map(function(d) {
 			return xs(d.time)+off;
 		    });
-		    clip.call(plotGpEst(time, preds[i], ys))
+		    clip.call(plotGpEst(time, preds[i], ys)
+			      .width(preds[i].weight))
 		}
 	    } else {
+		var mp = mparents[y-1],
+		    parent = mp.parent.data[x];
 		clip.call(plotLine(time.map(xs),
 				  parent.map(ys))
-			 .color(color(y))
-			 .width(2))
+			  .width(2*mp.loglik))
+
+		if (x == 0) {
+		    plt.append("text")
+			.attr("class","axis label")
+			.attr("x",-iheight/2)
+			.attr("y",-10)
+			.attr("dy", "-1.71em")
+			.style("text-anchor", "middle")
+			.attr("transform", "rotate(-90)")
+			.text(mp.parent.name+" : "+d3.format(".2f")(mp.loglik))
+		}
 	    }
 
 	    plt.append("g")

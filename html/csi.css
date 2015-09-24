@@ -67,3 +67,8 @@
   stroke: #000;
   shape-rendering: crispEdges;
 }
+
+.label {
+    font-size: 12px;
+    font-weight: bold
+}
