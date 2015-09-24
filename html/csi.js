@@ -641,7 +641,7 @@ app.controller('PlotTargetParents', function($scope, Items, MarginalParents) {
 		    .style("text-anchor","middle")
 	    }
 
-	    if (y == 4) {
+	    if (y == nrows-1) {
 		plt.append("g")
 		    .attr("class", "x axis")
 		    .attr("transform", "translate(0," + iheight + ")")
