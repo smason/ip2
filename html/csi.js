@@ -19,7 +19,7 @@ app.factory('Items', function () {
         var item = items[res.item]
 
         angular.forEach(res.weights, function(weight,pset) {
-            if (weight < 0.01)
+            if (weight < 0.05)
                 return;
 
             var obj = { pset:pset,weight:weight,reps:[]};
@@ -561,7 +561,7 @@ app.controller('PlotTargetParents', function($scope, $rootScope, Items, Marginal
     $rootScope.$on('mouseenter', function(evt,item) {
         var mparents = [];
         angular.forEach(MarginalParents, function(mp) {
-            if (item !== mp.item || mp.prob < 0.1)
+            if (item !== mp.item || mp.prob < 0.05)
                 return;
             mparents.push(mp);
         });
@@ -659,7 +659,7 @@ app.controller('PlotTargetParents', function($scope, $rootScope, Items, Marginal
             }
         }
 
-        svg.selectAll(".subplot").remove()
+        svg.selectAll(".subplot").remove();
 
         var plots = [];
         for (var y = 0; y < nrows; y++) {
@@ -675,6 +675,6 @@ app.controller('PlotTargetParents', function($scope, $rootScope, Items, Marginal
               .attr("class", "subplot")
             .each(function(d,i) {
                 createPlot(d3.select(this), d.x, d.y)
-            })
+            });
     })
 })
