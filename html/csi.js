@@ -578,88 +578,103 @@ app.controller('PlotTargetParents', function($scope, $rootScope, Items, Marginal
 
         ys.range(rangeScale([iheight, 0], 0.02))
 
-        for (var y = 0; y < nrows; y++) {
-            for (var x = 0; x < 5; x++) {
-                var top  = height*y+outmargin.top+inmargin.top,
-                    left = width*x+outmargin.left+inmargin.left;
+        function createPlot(plt, x, y) {
+            var top  = height*y+outmargin.top+inmargin.top,
+                left = width*x+outmargin.left+inmargin.left;
 
-                var time   = item.time[x],
-                    target = item.data[x];
+            var time   = item.time[x],
+                target = item.data[x];
 
-                var plt = svg.append("g")
-                    .attr("transform", "translate(" + left + "," + top + ")");
+            plt.attr("transform", "translate(" + left + "," + top + ")")
 
-                var clipid="gpclip"+x+"."+y;
-                plt.append("clipPath")
-                    .attr("id",clipid)
-                    .append("rect")
-                    .attr("width",iwidth)
-                    .attr("height",iheight);
+            var clipid="gpclip"+x+"."+y;
+            plt.append("clipPath")
+                .attr("id",clipid)
+                .append("rect")
+                .attr("width",iwidth)
+                .attr("height",iheight);
 
-                var clip = plt.append("g")
-                    .attr("class","plotarea")
-                    .attr("clip-path", "url(#"+clipid+")")
+            var clip = plt.append("g")
+                .attr("class","plotarea")
+                .attr("clip-path", "url(#"+clipid+")")
 
-                clip.call(plotLine(time.map(xs),target.map(ys))
-                          .color(color(x))
-                          .width(1))
+            clip.call(plotLine(time.map(xs),target.map(ys))
+                      .color(color(x))
+                      .width(1))
 
-                if (y == 0) {
-                    for (var i = 0; i < item.preds.length; i++) {
-                        var pred = item.preds[i],
-                            off = i-numpred/2,
-                            time = pred.reps[x].map(function(d) {
-                                return xs(d.time)+off;
-                            });
-                        clip.call(plotGpEst(time, pred.reps[x], ys)
-                                  .width(pred.weight))
-                    }
-                } else {
-                    var mp = mparents[y-1],
-                        parent = mp.parent.data[x];
-                    clip.call(plotLine(time.map(xs),
-                                       parent.map(ys))
-                              .width(2*mp.prob))
-
-		    if (x == 0) {
-                        plt.append("text")
-                            .attr("class","axis label")
-                            .attr("x",-iheight/2)
-                            .attr("y",-10)
-                            .attr("dy", "-1.71em")
-                            .style("text-anchor", "middle")
-                            .attr("transform", "rotate(-90)")
-                            .text(mp.parent.name+" : "+d3.format(".2f")(mp.prob))
-                    }
+            if (y == 0) {
+                for (var i = 0; i < item.preds.length; i++) {
+                    var pred = item.preds[i],
+                        off = i-numpred/2,
+                        time = pred.reps[x].map(function(d) {
+                            return xs(d.time)+off;
+                        });
+                    clip.call(plotGpEst(time, pred.reps[x], ys)
+                              .width(pred.weight))
                 }
+            } else {
+                var mp = mparents[y-1],
+                    parent = mp.parent.data[x];
+                clip.call(plotLine(time.map(xs),
+                                   parent.map(ys))
+                          .width(2*mp.prob))
 
-	        plt.append("g")
-                    .attr("class", "x y axis")
-                    .append("path")
-                    .attr("d",
-                          "M0,0L"+
-                          [[0,iheight],[iwidth,iheight]].join("L"))
-
-	        if (y == 0) {
+                if (x == 0) {
                     plt.append("text")
-                        .attr("x",iwidth/2)
-                        .text(csires.replicates[x].id)
-                        .style("text-anchor","middle")
-                }
-
-	        if (y == nrows-1) {
-                    plt.append("g")
-                        .attr("class", "x axis")
-                        .attr("transform", "translate(0," + iheight + ")")
-                        .call(xAxis)
-                }
-
-	        if (x == 0) {
-                    plt.append("g")
-                        .attr("class", "y axis")
-                        .call(yAxis)
+                        .attr("class","axis label")
+                        .attr("x",-iheight/2)
+                        .attr("y",-10)
+                        .attr("dy", "-1.71em")
+                        .style("text-anchor", "middle")
+                        .attr("transform", "rotate(-90)")
+                        .text(mp.parent.name+" : "+d3.format(".2f")(mp.prob))
                 }
             }
+
+            plt.append("g")
+                .attr("class", "x y axis")
+                .append("path")
+                .attr("d",
+                      "M0,0L"+
+                      [[0,iheight],[iwidth,iheight]].join("L"))
+
+            if (y == 0) {
+                plt.append("text")
+                    .attr("x",iwidth/2)
+                    .text(csires.replicates[x].id)
+                    .style("text-anchor","middle")
+            }
+
+            if (y == nrows-1) {
+                plt.append("g")
+                    .attr("class", "x axis")
+                    .attr("transform", "translate(0," + iheight + ")")
+                    .call(xAxis)
+            }
+
+            if (x == 0) {
+                plt.append("g")
+                    .attr("class", "y axis")
+                    .call(yAxis)
+            }
         }
+
+        svg.selectAll(".subplot").remove()
+
+        var plots = [];
+        for (var y = 0; y < nrows; y++) {
+            for (var x = 0; x < 5; x++) {
+                plots.push({x:x,y:y})
+            }
+        }
+
+        svg.selectAll(".subplot")
+            .data(plots)
+            .enter()
+            .append("g")
+              .attr("class", "subplot")
+            .each(function(d,i) {
+                createPlot(d3.select(this), d.x, d.y)
+            })
     })
 })
