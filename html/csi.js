@@ -37,12 +37,12 @@ app.factory('MarginalParents', function(Items, ParentalSets) {
 	angular.forEach(pset.parents, function(pit) {
 	    var key = [pit,pset.item.id];
 	    if(key in mpars) {
-		mpars[key].loglik += pset.weight;
+		mpars[key].prob += pset.weight;
 	    } else {
 		mpars[key] = {
 		    item   : pset.item,
 		    parent : Items[pit],
-		    loglik : pset.weight};
+		    prob   : +pset.weight};
 	    }
 	});
     });
@@ -132,7 +132,7 @@ app.controller('NetworkController', function($scope, $rootScope, Items, Marginal
 	    target: tn,
 	    mpar: mp,
 	    selected: function() {
-		return pn.item.selected && tn.item.selected && mp.loglik > 0.01;
+		return pn.item.selected && tn.item.selected && mp.prob > 0.01;
 	    }
 	});
     });
@@ -157,8 +157,8 @@ app.controller('NetworkController', function($scope, $rootScope, Items, Marginal
 
     var force = d3.layout.force()
         .charge(-500)
-        .linkDistance(function(l) { return 100 / (0.1+l.mpar.loglik); })
-	.linkStrength(function(l) { return l.mpar.loglik });
+        .linkDistance(function(l) { return 100 / (0.1+l.mpar.prob); })
+	.linkStrength(function(l) { return l.mpar.prob });
 
     var vis = svg.append("g");
 
@@ -166,7 +166,7 @@ app.controller('NetworkController', function($scope, $rootScope, Items, Marginal
         .attr("class", "link")
 	.selectAll()
         .data(edges).enter().append("path")
-        .style("stroke-width", function(l) { return 2 * l.mpar.loglik; });
+        .style("stroke-width", function(l) { return 2 * l.mpar.prob; });
 
     var nodes = vis.append("g")
 	.attr("class", "node")
@@ -211,10 +211,12 @@ app.controller('NetworkController', function($scope, $rootScope, Items, Marginal
 	    var str = '';
 	    if (l.selected())
 		str += ' selected';
-	    if (l.mpar.loglik > 0.01 &&
-		((l.source.item.mouseover && l.target.selected()) ||
-		 (l.target.item.mouseover && l.source.selected())))
-		str += ' mouseover';
+	    if (l.mpar.prob > 0.01) {
+		if(l.source.item.mouseover && l.target.selected())
+		    str += ' mouseovertarget';
+		else if (l.target.item.mouseover && l.source.selected())
+		    str += ' mouseoverparent';
+	    }
 	    return str;
 	});
     };
@@ -472,7 +474,7 @@ var plotGpEst = function(time, muvarlik, yscale) {
 
 	l.append("path")
 	    .attr("class", "line gpestimate")
-	    .style("stroke-width",width/2)
+	    .style("stroke-width",0.5*width)
 	    .attr("d",function(d,i) {
 		var sd = Math.sqrt(d.var+d.lik)*2;
 		return ("M"+time[i]+","+yscale(d.mu-sd)+
@@ -490,12 +492,12 @@ app.controller('PlotTargetParents', function($scope, Items, MarginalParents) {
     var item = Items['Gene9'];
     var mparents = [];
     angular.forEach(MarginalParents, function(mp) {
-	if (item !== mp.item || mp.loglik < 0.1)
+	if (item !== mp.item || mp.prob < 0.1)
 	    return;
 	mparents.push(mp);
     });
 
-    mparents.sort(function(a,b) { return a.loglik < b.loglik; })
+    mparents.sort(function(a,b) { return b.prob - a.prob; })
 
     var preds = [], numpred = 0;
     angular.forEach(csires.results, function(res) {
@@ -524,8 +526,8 @@ app.controller('PlotTargetParents', function($scope, Items, MarginalParents) {
 
     var parent = d3.select("#parentplots");
 
-    var outmargin = {top: 15, right: 5, bottom: 10, left: 35};
-    var inmargin  = {top: 5, right: 5, bottom: 5, left: 10};
+    var outmargin = {top: 15, right: 5, bottom: 10, left: 40};
+    var inmargin  = {top: 5, right: 5, bottom: 5, left: 5};
 
     var nrows = mparents.length+1,
 	cwidth = parent.node().clientWidth,
@@ -611,7 +613,7 @@ app.controller('PlotTargetParents', function($scope, Items, MarginalParents) {
 		    parent = mp.parent.data[x];
 		clip.call(plotLine(time.map(xs),
 				  parent.map(ys))
-			  .width(2*mp.loglik))
+			  .width(2*mp.prob))
 
 		if (x == 0) {
 		    plt.append("text")
@@ -621,7 +623,7 @@ app.controller('PlotTargetParents', function($scope, Items, MarginalParents) {
 			.attr("dy", "-1.71em")
 			.style("text-anchor", "middle")
 			.attr("transform", "rotate(-90)")
-			.text(mp.parent.name+" : "+d3.format(".2f")(mp.loglik))
+			.text(mp.parent.name+" : "+d3.format(".2f")(mp.prob))
 		}
 	    }
 

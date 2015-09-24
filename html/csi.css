@@ -56,8 +56,12 @@
     stroke-width: 2pt;
 }
 
-.link .mouseover {
+.link .mouseovertarget {
     stroke: royalblue;
+}
+
+.link .mouseoverparent {
+    stroke: crimson;
 }
 
 .line {
