@@ -9,10 +9,36 @@ app.factory('Items', function () {
 	item.ord  = i;
 	item.name = item.id;
 	item.selected = true;
-	item.time = time;
+        item.time = time;
+        item.preds = [];
 
 	this[item.id] = item;
     }, items);
+
+    angular.forEach(csires.results, function(res) {
+        var item = items[res.item]
+
+        angular.forEach(res.weights, function(weight,pset) {
+            if (weight < 0.01)
+                return;
+
+            var obj = { pset:pset,weight:weight,reps:[]};
+
+            var predi = res.predictions[pset];
+            angular.forEach(csires.replicates, function(rep,repn) {
+                var arr = []
+                for (var i = 1; i < rep.time.length; i++) {
+                    arr.push({time:rep.time[i],
+                              mu:predi.mu[repn][i-1],
+                              var:predi.var[repn][i-1],
+                              lik:res.hyperparams[2]})
+                }
+                obj.reps[repn] = arr;
+            });
+
+            item.preds.push(obj);
+        });
+    });
     return items;
 });
 
@@ -232,18 +258,23 @@ app.controller('NetworkController', function($scope, $rootScope, Items, Marginal
             .start();
     };
 
-    $rootScope.$on('mouseenter', function(evt,item) {
+    var unbind = [];
+    unbind.push($rootScope.$on('mouseenter', function(evt,item) {
 	item.mouseover = true;
 	setStyles();
-    });
+    }));
 
-    $rootScope.$on('mouseleave', function(evt,item) {
+    unbind.push($rootScope.$on('mouseleave', function(evt,item) {
 	item.mouseover = false;
 	setStyles();
-    });
+    }));
 
-    var unbind = $rootScope.$on('itemchanged', runWithIt);
-    $scope.$on('$destroy', unbind);
+    unbind.push($rootScope.$on('itemchanged', runWithIt));
+
+    $scope.$on('$destroy', function() {
+        for (var i = 0; i < unbind.length; i++)
+            unbind[i]();
+    });
 
     runWithIt();
 })
@@ -489,172 +520,146 @@ var plotGpEst = function(time, muvarlik, yscale) {
     return plot;
 };
 
-app.controller('PlotTargetParents', function($scope, Items, MarginalParents) {
-    var item = Items['Gene9'];
-    var mparents = [];
-    angular.forEach(MarginalParents, function(mp) {
-	if (item !== mp.item || mp.prob < 0.1)
-	    return;
-	mparents.push(mp);
-    });
-
-    mparents.sort(function(a,b) { return b.prob - a.prob; })
-
-    var preds = [], numpred = 0;
-    angular.forEach(csires.results, function(res) {
-	if(res.item == item.name) {
-	    angular.forEach(res.weights, function(weight,pset) {
-		if (weight > 0.01) {
-		    predi = res.predictions[pset];
-		    angular.forEach(csires.replicates, function(rep,repn) {
-			x = []
-			for (var i = 1; i < rep.time.length; i++) {
-			    x.push({time:rep.time[i],
-				    mu:predi.mu[repn][i-1],
-				    var:predi.var[repn][i-1],
-				    lik:res.hyperparams[2]})
-			}
-			x.weight = weight;
-			x.rep    = repn;
-			x.off    = numpred;
-			preds.push(x);
-		    });
-		    numpred += 1;
-		}
-	    });
-	}
-    });
-
-    var parent = d3.select("#parentplots");
-
+app.controller('PlotTargetParents', function($scope, $rootScope, Items, MarginalParents) {
     var outmargin = {top: 15, right: 5, bottom: 10, left: 40};
     var inmargin  = {top: 5, right: 5, bottom: 5, left: 5};
 
-    var nrows = mparents.length+1,
-	cwidth = parent.node().clientWidth,
-	cheight = (70+inmargin.top+inmargin.bottom)*nrows+outmargin.top+outmargin.bottom;
-
-    // cheight = parent.node().clientHeight;
-
-    var svg = parent
-        .attr("tabindex", 3)
-      .append("svg")
-        .attr("width", cwidth)
-        .attr("height", cheight)
+    var parent = d3.select("#parentplots"),
+        cwidth = parent.node().clientWidth,
+        width   = (cwidth-outmargin.left-outmargin.right-inmargin.right)/5,
+        iwidth  = width-inmargin.right-inmargin.left;
 
     var color = d3.scale.category10();
 
     var rangeScale = function (r, m) {
-	var d = (r[1] - r[0]) * m;
-	return [r[0] + d, r[1] - d]
+        var d = (r[1] - r[0]) * m;
+        return [r[0] + d, r[1] - d]
     }
 
-    var height  = (cheight-outmargin.top-outmargin.bottom-inmargin.bottom)/nrows,
-	width   = (cwidth-outmargin.left-outmargin.right-inmargin.right)/5,
-	iheight = height-inmargin.bottom-inmargin.top,
-	iwidth  = width-inmargin.right-inmargin.left;
-
     var xs = d3.scale.linear()
-	.range(rangeScale([0, iwidth], 0.02));
-
-    var ys = d3.scale.linear()
-	.range(rangeScale([iheight, 0], 0.02));
+        .range(rangeScale([0, iwidth], 0.02));
 
     xs.domain([0,1000])
 
+    var ys = d3.scale.linear();
+
     var xAxis = d3.svg.axis()
-	.scale(xs)
-	.ticks(5)
-	.orient("bottom");
+        .scale(xs)
+        .ticks(5)
+        .orient("bottom");
 
     var yAxis = d3.svg.axis()
-	.scale(ys)
-	.ticks(4)
-	.orient("left");
+        .scale(ys)
+        .ticks(4)
+        .orient("left");
 
-    for (var y = 0; y < nrows; y++) {
-	for (var x = 0; x < 5; x++) {
-	    var top  = height*y+outmargin.top+inmargin.top,
-		left = width*x+outmargin.left+inmargin.left;
+    var svg = parent
+        .attr("tabindex", 3)
+        .append("svg")
+        .attr("width", cwidth);
 
-	    var time   = item.time[x],
-		target = item.data[x];
+    $rootScope.$on('mouseenter', function(evt,item) {
+        var mparents = [];
+        angular.forEach(MarginalParents, function(mp) {
+            if (item !== mp.item || mp.prob < 0.1)
+                return;
+            mparents.push(mp);
+        });
+        mparents.sort(function(a,b) { return b.prob - a.prob; })
 
-	    var plt = svg.append("g")
-		.attr("transform", "translate(" + left + "," + top + ")");
+        var numpred = item.preds.length;
 
-	    var clipid="gpclip"+x+"."+y;
-	    plt.append("clipPath")
-		.attr("id",clipid)
-		.append("rect")
-		.attr("width",iwidth)
-		.attr("height",iheight);
+        var nrows = mparents.length+1,
+            cheight = (70+inmargin.top+inmargin.bottom)*nrows+outmargin.top+outmargin.bottom,
+            height  = (cheight-outmargin.top-outmargin.bottom-inmargin.bottom)/nrows,
+            iheight = height-inmargin.bottom-inmargin.top;
 
-	    var	clip = plt.append("g")
-		.attr("class","plotarea")
-		.attr("clip-path", "url(#"+clipid+")")
+        svg.attr("height", cheight)
 
-	    clip.call(plotLine(time.map(xs),target.map(ys))
-		      .color(color(x))
-		      .width(1))
+        ys.range(rangeScale([iheight, 0], 0.02))
 
-	    if (y == 0) {
-		for (var i = 0; i < preds.length; i++) {
-		    if (preds[i].rep !=	x)
-			continue;
-		    var off = preds[i].off-numpred/2;
-		    var time = preds[i].map(function(d) {
-			return xs(d.time)+off;
-		    });
-		    clip.call(plotGpEst(time, preds[i], ys)
-			      .width(preds[i].weight))
-		}
-	    } else {
-		var mp = mparents[y-1],
-		    parent = mp.parent.data[x];
-		clip.call(plotLine(time.map(xs),
-				  parent.map(ys))
-			  .width(2*mp.prob))
+        for (var y = 0; y < nrows; y++) {
+            for (var x = 0; x < 5; x++) {
+                var top  = height*y+outmargin.top+inmargin.top,
+                    left = width*x+outmargin.left+inmargin.left;
 
-		if (x == 0) {
-		    plt.append("text")
-			.attr("class","axis label")
-			.attr("x",-iheight/2)
-			.attr("y",-10)
-			.attr("dy", "-1.71em")
-			.style("text-anchor", "middle")
-			.attr("transform", "rotate(-90)")
-			.text(mp.parent.name+" : "+d3.format(".2f")(mp.prob))
-		}
-	    }
+                var time   = item.time[x],
+                    target = item.data[x];
 
-	    plt.append("g")
-		.attr("class", "x y axis")
-		.append("path")
-		.attr("d",
-		      "M0,0L"+
-		      [[0,iheight],[iwidth,iheight]].join("L"))
+                var plt = svg.append("g")
+                    .attr("transform", "translate(" + left + "," + top + ")");
 
-	    if (y == 0) {
-		plt.append("text")
-		    .attr("x",iwidth/2)
-		    .text(csires.replicates[x].id)
-		    .style("text-anchor","middle")
-	    }
+                var clipid="gpclip"+x+"."+y;
+                plt.append("clipPath")
+                    .attr("id",clipid)
+                    .append("rect")
+                    .attr("width",iwidth)
+                    .attr("height",iheight);
 
-	    if (y == nrows-1) {
-		plt.append("g")
-		    .attr("class", "x axis")
-		    .attr("transform", "translate(0," + iheight + ")")
-		    .call(xAxis)
-	    }
+                var clip = plt.append("g")
+                    .attr("class","plotarea")
+                    .attr("clip-path", "url(#"+clipid+")")
 
-	    if (x == 0) {
-		plt.append("g")
-		    .attr("class", "y axis")
-		    .call(yAxis)
-	    }
+                clip.call(plotLine(time.map(xs),target.map(ys))
+                          .color(color(x))
+                          .width(1))
 
-	}
-    }
+                if (y == 0) {
+                    for (var i = 0; i < item.preds.length; i++) {
+                        var pred = item.preds[i],
+                            off = i-numpred/2,
+                            time = pred.reps[x].map(function(d) {
+                                return xs(d.time)+off;
+                            });
+                        clip.call(plotGpEst(time, pred.reps[x], ys)
+                                  .width(pred.weight))
+                    }
+                } else {
+                    var mp = mparents[y-1],
+                        parent = mp.parent.data[x];
+                    clip.call(plotLine(time.map(xs),
+                                       parent.map(ys))
+                              .width(2*mp.prob))
+
+		    if (x == 0) {
+                        plt.append("text")
+                            .attr("class","axis label")
+                            .attr("x",-iheight/2)
+                            .attr("y",-10)
+                            .attr("dy", "-1.71em")
+                            .style("text-anchor", "middle")
+                            .attr("transform", "rotate(-90)")
+                            .text(mp.parent.name+" : "+d3.format(".2f")(mp.prob))
+                    }
+                }
+
+	        plt.append("g")
+                    .attr("class", "x y axis")
+                    .append("path")
+                    .attr("d",
+                          "M0,0L"+
+                          [[0,iheight],[iwidth,iheight]].join("L"))
+
+	        if (y == 0) {
+                    plt.append("text")
+                        .attr("x",iwidth/2)
+                        .text(csires.replicates[x].id)
+                        .style("text-anchor","middle")
+                }
+
+	        if (y == nrows-1) {
+                    plt.append("g")
+                        .attr("class", "x axis")
+                        .attr("transform", "translate(0," + iheight + ")")
+                        .call(xAxis)
+                }
+
+	        if (x == 0) {
+                    plt.append("g")
+                        .attr("class", "y axis")
+                        .call(yAxis)
+                }
+            }
+        }
+    })
 })
