@@ -99,27 +99,18 @@ app.controller('NetworkController', function($scope, $rootScope, Items, Marginal
           .attr("width", width)
           .attr("height", height);
 
-    // build the arrow.
-    svg.append("svg:defs").selectAll("marker")
-	.data(["end"])      // Different link/path types can be defined here
-      .enter().append("marker")    // This section adds in the arrows
-	.attr("id", String)
+    // build the arrow (put on the end using CSS)
+    svg.append("svg:defs")
+	.append("marker")    // This section adds in the arrows
+	.attr("id", "arrow")
 	.attr("viewBox", "0 -5 10 10")
 	.attr("refX", 15)
 	.attr("refY", 0)
 	.attr("markerWidth", 6)
 	.attr("markerHeight", 6)
 	.attr("orient", "auto")
-	.style("fill","#c00")
       .append("path")
 	.attr("d", "M0,-5L10,0L0,5");
-
-    var borderPath = svg.append("rect")
-        .attr("x", 0)
-        .attr("y", 0)
-        .attr("height", height)
-        .attr("width", width)
-        .style("fill", "none");
 
     var items = [], edges = [];
     angular.forEach(Items, function(item) {

@@ -31,8 +31,12 @@
     visibility: hidden;
 }
 
+#arrow {
+    fill: crimson;
+}
+
 .link {
-    marker-end: url(#end);
+    marker-end: url(#arrow);
     fill: none;
     stroke: black;
     visibility: hidden;
