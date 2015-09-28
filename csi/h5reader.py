@@ -3,27 +3,27 @@ import h5py as h5
 
 import csi.gp as gp
 
-class csi_rep(object):
+class Model(object):
+    def __init__(self, fd):
+        self.fd = fd
+
+        self.items = [s.decode('utf-8') for s in fd['items']]
+        self.reps  = [Replicate(d) for d in fd['data'].values()]
+
+    def get_res(self, res):
+        return Result(self, self.fd["result/{0}".format(res+1)])
+
+    def iter_res(self):
+        for res in self.fd["result"].values():
+            yield Result(self, res)
+
+class Replicate(object):
     def __init__(self, h5data):
         self.name = h5data.attrs["replicate"]
         self.time = h5data.attrs["time"]
         self.data = h5data[:]
 
-class csi_mod(object):
-    def __init__(self, fd):
-        self.fd = fd
-
-        self.items = [s.decode('utf-8') for s in fd['items']]
-        self.reps  = [csi_rep(d) for d in fd['data'].values()]
-
-    def get_res(self, res):
-        return csi_res(self, self.fd["result/{0}".format(res+1)])
-
-    def iter_res(self):
-        for res in self.fd["result"].values():
-            yield csi_res(self, res)
-
-class csi_res(object):
+class Result(object):
     def __init__(self, mod, res):
         self.mod = mod
         self.res = res
@@ -48,7 +48,7 @@ class csi_res(object):
         self.psets   = self.psets[ii]
         self.weights = self.weights[ii]
 
-class csi_pred(object):
+class Predictor(object):
     def __init__(self, res, pset, datasets=None):
         self.target = res.target
         self.hypers = res.hypers
@@ -73,54 +73,3 @@ class csi_pred(object):
 
     def predict1(self, expr):
         return self.gp.predict(expr[None,self.ix])
-
-def get_dom(mod, min_weight=1e-5, min_predict=1e-2):
-    items = mod.items
-
-    reps = []
-    for r in mod.reps:
-        reps.append(dict(
-            name=r.name,
-            time=r.time.tolist(),
-            data=r.data.tolist()))
-
-    results = []
-    for res in mod.iter_res():
-        res.filter_by_weight(min_weight)
-        res.sort_psets()
-
-        models = []
-        for w,ps in zip(res.weights,res.psets):
-            mi = dict(weight=w,pset=ps.tolist())
-            if w >= min_predict:
-                pred = csi_pred(res, ps)
-                predict = []
-                for r in mod.reps:
-                    mu,var = pred.predict_dataset(r.data[:,:-1])
-                    predict.append(dict(
-                        mu=mu.flatten().tolist(),
-                        var=var.flatten().tolist()))
-                mi["predict"] = predict
-            models.append(mi)
-
-        out = dict(
-            target=int(res.target),
-            hyperparams=res.hypers.tolist(),
-            models=models)
-        results.append(out)
-
-    return dict(
-        items=items,
-        reps=reps,
-        results=results)
-
-def main():
-    import json
-    import sys
-
-    fd = h5.File("dream-trunc3.h5")
-    mod = csi_mod(fd)
-    json.dump(get_dom(mod),sys.stdout)
-
-if __name__ == '__main__':
-    main()
