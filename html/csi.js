@@ -511,14 +511,21 @@ app.controller('CSI', function ($scope) {
         return mpars;
     };
 
+    allmarginals = [];
     angular.forEach(csires.results, function(res) {
         var item = items[res.target];
         item.result = res;
-        item.parents = $scope.mapnetwork(item);
+        item.parents = $scope.marginalnetwork(item);
+        angular.forEach(item.parents, function (it) {
+            if (it !== undefined) {
+                allmarginals.push(it)
+            }
+        })
     });
 
     $scope.weightthresh = 0.1;
     $scope.items = items;
+    $scope.allmarginals = allmarginals;
 
     makeNetwork($scope, items);
     initialisePlots($scope, csires.reps, items);
