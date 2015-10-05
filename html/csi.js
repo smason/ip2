@@ -217,29 +217,37 @@ var plotGpEst = function(time, muvar, lik, yscale) {
     function plot(g) { g.each(function() {
 	var g = d3.select(this);
 	var l = g.append("g").selectAll("path")
-	    .data(muvarlik)
+            .data([muvar])
 	    .enter();
 
 	l.append("path")
 	    .attr("class", "line gpestimate")
 	    .style("stroke-width",width)
-	    .attr("d",function(d,i) {
-		var sd = Math.sqrt(d.var)*2,
-		    ti = time[i],
-		    y0 = yscale(d.mu);
-		return ("M"+(ti-3)+","+y0+
-			"L"+(ti+2)+","+y0+
-			"M"+ti+","+yscale(d.mu-sd)+
-			"L"+ti+","+yscale(d.mu+sd))
+            .attr("d",function(d) {
+                var s = "";
+                for (var i = 0; i < d.mu.length; i++) {
+                    var sd = Math.sqrt(d.var[i])*2,
+                        ti = time[i+1],
+                        y0 = yscale(d.mu[i]);
+                    s += ("M"+(ti-3)+","+y0+
+                          "L"+(ti+2)+","+y0+
+                          "M"+ti+","+yscale(d.mu[i]-sd)+
+                          "L"+ti+","+yscale(d.mu[i]+sd))
+                }
+                return s;
 	    });
 
 	l.append("path")
 	    .attr("class", "line gpestimate")
 	    .style("stroke-width",0.5*width)
-	    .attr("d",function(d,i) {
-		var sd = Math.sqrt(d.var+d.lik)*2;
-		return ("M"+time[i]+","+yscale(d.mu-sd)+
-			"L"+time[i]+","+yscale(d.mu+sd));
+            .attr("d",function(d,i) {
+                var s = "";
+                for (var i = 0; i < d.mu.length; i++) {
+                    var sd = Math.sqrt(d.var[i]+lik)*2;
+                    s += ("M"+time[i+1]+","+yscale(d.mu[i]-sd)+
+                          "L"+time[i+1]+","+yscale(d.mu[i]+sd));
+                }
+                return s;
 	    });
     })};
     plot.width = function(x) {
@@ -287,18 +295,21 @@ var makePlots = function($scope, Reps, Items) {
         .append("svg")
         .attr("width", cwidth);
 
-    $scope.$on('mouseenter', function(evt,item) {
-        console.log(item)
-
-        var mparents = item.marginalparents;
+    var plotItems = function(evt,item) {
+        var mparents = [];
         var preds = [];
 
+        angular.forEach(item.marginalparents, function(par) {
+            if(par !== undefined && par.prob > $scope.weightthresh)
+                mparents.push(par)
+        });
+        mparents.sort(function(a,b) { return b.prob - a.prob; })
+
         angular.forEach(item.result.models, function(mod) {
-            if (mod.predict !== undefined)
-                preds.push(mod.predict)
-        })
-        preds.sort(function(a,b) { return b.prob - a.prob; })
-        var numpred = preds.length;
+            if (mod.predict !== undefined && mod.weight > 0.02)
+                preds.push(mod)
+        });
+        preds.sort(function(a,b) { return b.weight - a.weight; })
 
         var nrows = mparents.length+1,
             cheight = (70+inmargin.top+inmargin.bottom)*nrows+outmargin.top+outmargin.bottom,
@@ -308,87 +319,6 @@ var makePlots = function($scope, Reps, Items) {
         svg.attr("height", cheight)
 
         ys.range(rangeScale([iheight, 0], 0.02))
-
-        function createPlot(plt, x, y) {
-            var top  = height*y+outmargin.top+inmargin.top,
-                left = width*x+outmargin.left+inmargin.left;
-
-            var time   = Reps[x].time,
-                target = Reps[x].data[item.ord];
-
-            plt.attr("transform", "translate(" + left + "," + top + ")")
-
-            var clipid="gpclip"+x+"."+y;
-            plt.append("clipPath")
-                .attr("id",clipid)
-                .append("rect")
-                .attr("width",iwidth)
-                .attr("height",iheight);
-
-            var clip = plt.append("g")
-                .attr("class","plotarea")
-                .attr("clip-path", "url(#"+clipid+")")
-
-            clip.call(plotLine(time.map(xs),target.map(ys))
-                      .color(color(x))
-                      .width(1))
-
-            if (y == 0) {
-                for (var i = 0; i < preds.length; i++) {
-                    var pred = preds[i],
-                        off = i-numpred/2,
-                        time = pred[x].mu.map(function(d) {
-                            return xs(d.time)+off;
-                        });
-                    clip.call(plotGpEst(time, pred[x], ys)
-                              .width(pred.weight))
-                }
-            } else {
-                var mp = mparents[y-1],
-                    parent = Reps[x].data[mp.parent.ord];
-                clip.call(plotLine(time.map(xs),
-                                   parent.map(ys))
-                          .width(2*mp.prob))
-
-                if (x == 0) {
-                    plt.append("text")
-                        .attr("class","axis label")
-                        .attr("x",-iheight/2)
-                        .attr("y",-10)
-                        .attr("dy", "-1.71em")
-                        .style("text-anchor", "middle")
-                        .attr("transform", "rotate(-90)")
-                        .text(mp.parent.name+" : "+d3.format(".2f")(mp.prob))
-                }
-            }
-
-            plt.append("g")
-                .attr("class", "x y axis")
-                .append("path")
-                .attr("d",
-                      "M0,0L"+
-                      [[0,iheight],[iwidth,iheight]].join("L"))
-
-            if (y == 0) {
-                plt.append("text")
-                    .attr("x",iwidth/2)
-                    .text(Reps[x].name)
-                    .style("text-anchor","middle")
-            }
-
-            if (y == nrows-1) {
-                plt.append("g")
-                    .attr("class", "x axis")
-                    .attr("transform", "translate(0," + iheight + ")")
-                    .call(xAxis)
-            }
-
-            if (x == 0) {
-                plt.append("g")
-                    .attr("class", "y axis")
-                    .call(yAxis)
-            }
-        }
 
         svg.selectAll(".subplot").remove();
 
@@ -405,9 +335,92 @@ var makePlots = function($scope, Reps, Items) {
             .append("g")
               .attr("class", "subplot")
             .each(function(d,i) {
-                createPlot(d3.select(this), d.x, d.y)
+                var plt = d3.select(this),
+                    x = d.x, y = d.y;
+
+                var top  = height*y+outmargin.top+inmargin.top,
+                    left = width*x+outmargin.left+inmargin.left;
+
+                plt.attr("transform", "translate(" + left + "," + top + ")")
+
+                var clipid="gpclip"+x+"."+y;
+                plt.append("clipPath")
+                    .attr("id",clipid)
+                    .append("rect")
+                    .attr("width",iwidth)
+                    .attr("height",iheight);
+
+                var plot = plt.append("g")
+                    .attr("class","plotarea")
+                    .attr("clip-path", "url(#"+clipid+")")
+
+                var time   = Reps[x].time.map(function(d) { return xs(d) }),
+                    target = Reps[x].data[item.ord];
+
+                plot.call(plotLine(time,target.map(ys))
+                          .color(color(x))
+                          .width(1))
+
+                if (y == 0) {
+                    var numpred = preds.length;
+                    for (var i = 0; i < preds.length; i++) {
+                        var mod = preds[i],
+                            pred = mod.predict,
+                            off = i-numpred/2,
+                            time2 = time.map(function(d) { return d+off });
+                        plot.call(plotGpEst(time2, pred[x], item.result.hyperparams[2], ys)
+                                  .width(mod.weight))
+                    }
+                } else {
+                    var mp = mparents[y-1];
+                    var parent = Reps[x].data[mp.parent.ord];
+
+                    plot.call(plotLine(time,
+                                       parent.map(ys))
+                              .width(2*mp.prob))
+
+                    if (x == 0) {
+                        plt.append("text")
+                            .attr("class","axis label")
+                            .attr("x",-iheight/2)
+                            .attr("y",-10)
+                            .attr("dy", "-1.71em")
+                            .style("text-anchor", "middle")
+                            .attr("transform", "rotate(-90)")
+                            .text(mp.parent.name+" : "+d3.format(".2f")(mp.prob))
+                    }
+                }
+
+                if (y == 0) {
+                    plt.append("text")
+                        .attr("x",iwidth/2)
+                        .text(Reps[x].name)
+                        .style("text-anchor","middle")
+                }
+
+                if (y == nrows-1) {
+                    plt.append("g")
+                        .attr("class", "x axis")
+                        .attr("transform", "translate(0," + iheight + ")")
+                        .call(xAxis)
+                }
+
+                if (x == 0) {
+                    plt.append("g")
+                        .attr("class", "y axis")
+                        .call(yAxis)
+                }
+
+                plt.append("g")
+                    .attr("class", "x y axis")
+                    .append("path")
+                    .attr("d",
+                          "M0,0L"+
+                          [[0,iheight],[iwidth,iheight]].join("L"))
             });
-    })
+    }
+
+    $scope.$on('mouseenter', plotItems);
 }
 
 app.controller('CSI', function ($scope) {
