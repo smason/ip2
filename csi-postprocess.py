@@ -7,7 +7,7 @@ import csi.h5reader as pp
 import optparse
 import logging
 
-def get_dom(mod, min_weight=1e-5, min_predict=1e-2):
+def get_dom(mod, min_weight=1e-5, min_predict=1e-2, maxmodels=1000, maxpredict=20):
     items = mod.items
 
     reps = []
@@ -22,25 +22,31 @@ def get_dom(mod, min_weight=1e-5, min_predict=1e-2):
         res.filter_by_weight(min_weight)
         res.sort_psets()
 
+        npredict = 0
+
         models = []
         for w,ps in zip(res.weights,res.psets):
             mi = dict(weight=w,pset=ps.tolist())
             if w >= min_predict:
-                pred = pp.Predictor(res, ps)
-                predict = []
-                for r in mod.reps:
-                    mu,var = pred.predict_dataset(r.data[:,:-1])
-                    predict.append(dict(
-                        mu=mu.flatten().tolist(),
-                        var=var.flatten().tolist()))
-                mi["predict"] = predict
+                if npredict < maxpredict:
+                    pred = pp.Predictor(res, ps)
+                    predict = []
+                    for r in mod.reps:
+                        mu,var = pred.predict_dataset(r.data[:,:-1])
+                        predict.append(dict(
+                            mu=mu.flatten().tolist(),
+                            var=var.flatten().tolist()))
+                    mi["predict"] = predict
+                npredict += 1
             models.append(mi)
-
         out = dict(
             target=int(res.target),
             hyperparams=res.hypers.tolist(),
-            models=models)
+            models=models[:maxmodels])
         results.append(out)
+
+        logging.info("%s: %i models and %i predictions output (weights=%s)",
+                     items[res.target], len(models), npredict, str(res.weights[:3]))
 
     return dict(
         items=items,
