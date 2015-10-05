@@ -65,22 +65,27 @@ var makeNetwork = function ($scope, Items) {
 	item.node = it;
     });
 
-    angular.forEach(Items, function(item) {
-        angular.forEach(item.marginalparents, function(mp) {
-            var it = {
-                source: mp.parent.node,
-                target: mp.target.node,
-                mpar: mp,
-                selected: function() {
-                    return (mp.parent.selected &&
-                            mp.target.selected &&
-                            mp.prob > 0.01);
-                }
-            };
-            edges.push(it);
-            mp.edge = it;
+    var collectAllEdges = function() {
+        edges = [];
+        angular.forEach(Items, function(item) {
+            angular.forEach(item.marginalparents, function(mp) {
+                var it = {
+                    source: mp.parent.node,
+                    target: mp.target.node,
+                    mpar: mp,
+                    selected: function() {
+                        return (mp.parent.selected &&
+                                mp.target.selected &&
+                                mp.prob > $scope.weightthresh);
+                    }
+                };
+                edges.push(it);
+                mp.edge = it;
+            });
         });
-    });
+    };
+
+    collectAllEdges();
 
     var selectedItems = function() {
 	var out = [];
@@ -119,7 +124,12 @@ var makeNetwork = function ($scope, Items) {
 	.selectAll()
 	.data(items)
 	.enter().append("circle")
-	  .attr("r", 4);
+          .attr("r", 4);
+
+    nodes
+        .append("svg:title")
+        .text(function(d) { return d.item.name; });
+
 
     force.on("tick", function () {
         links.attr("d", function(d) {
@@ -189,6 +199,11 @@ var makeNetwork = function ($scope, Items) {
 
     $scope.$on('itemchanged', runWithIt);
 
+    $scope.$on('weightchanged', function() {
+        collectAllEdges();
+        runWithIt();
+    });
+
     runWithIt();
 }
 
@@ -257,13 +272,14 @@ var plotGpEst = function(time, muvar, lik, yscale) {
     return plot;
 };
 
-var makePlots = function($scope, Reps, Items) {
+var initialisePlots = function($scope, Reps, Items) {
     var outmargin = {top: 15, right: 5, bottom: 10, left: 40};
     var inmargin  = {top: 5, right: 5, bottom: 5, left: 5};
 
     var parent = d3.select("#parentplots"),
         cwidth = parent.node().clientWidth,
-        width   = (cwidth-outmargin.left-outmargin.right-inmargin.right)/5,
+        nreps = Reps.length,
+        width   = (cwidth-outmargin.left-outmargin.right-inmargin.right)/nreps,
         iwidth  = width-inmargin.right-inmargin.left;
 
     var color = d3.scale.category10();
@@ -274,11 +290,16 @@ var makePlots = function($scope, Reps, Items) {
     }
 
     var xs = d3.scale.linear()
-        .range(rangeScale([0, iwidth], 0.02));
+        .range(rangeScale([0, iwidth], 0.02))
+        .domain([
+            d3.min(Reps, function(rep) { return d3.min(rep.time); }),
+            d3.max(Reps, function(rep) { return d3.max(rep.time); })])
 
-    xs.domain([0,1000])
-
-    var ys = d3.scale.linear();
+    var ys = d3.scale.linear()
+        .domain([
+            d3.min(Reps, function(rep) { return d3.min(rep.data, function(it) { return d3.min(it); })}),
+            d3.max(Reps, function(rep) { return d3.max(rep.data, function(it) { return d3.max(it); })})
+        ])
 
     var xAxis = d3.svg.axis()
         .scale(xs)
@@ -295,7 +316,7 @@ var makePlots = function($scope, Reps, Items) {
         .append("svg")
         .attr("width", cwidth);
 
-    var plotItems = function(evt,item) {
+    var plotItem = function(item) {
         var mparents = [];
         var preds = [];
 
@@ -324,7 +345,7 @@ var makePlots = function($scope, Reps, Items) {
 
         var plots = [];
         for (var y = 0; y < nrows; y++) {
-            for (var x = 0; x < 5; x++) {
+            for (var x = 0; x < nreps; x++) {
                 plots.push({x:x,y:y})
             }
         }
@@ -420,7 +441,19 @@ var makePlots = function($scope, Reps, Items) {
             });
     }
 
-    $scope.$on('mouseenter', plotItems);
+    var curItem;
+    $scope.$on('mouseenter', function(evt,item) {
+        plotItem(item);
+        curItem = item;
+    });
+
+    $scope.$on('weightchanged', function() {
+        console.log("fred")
+        if (curItem !== undefined) {
+            console.log("in fred")
+            plotItem(curItem)
+        }
+    })
 }
 
 app.controller('CSI', function ($scope) {
@@ -465,5 +498,5 @@ app.controller('CSI', function ($scope) {
     $scope.allmarginals = allmarginals;
 
     makeNetwork($scope, items);
-    makePlots($scope, csires.reps, items);
+    initialisePlots($scope, csires.reps, items);
 });

@@ -6,7 +6,8 @@
 }
 #data-items {
     width: 8rem;
-    height: 35rem;
+    max-height: 35rem;
+    overflow-y:scroll;
 }
 #data-item {
     padding-left: 5px;
