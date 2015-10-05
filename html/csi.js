@@ -68,7 +68,10 @@ var makeNetwork = function ($scope, Items) {
     var collectAllEdges = function() {
         edges = [];
         angular.forEach(Items, function(item) {
-            angular.forEach(item.marginalparents, function(mp) {
+            angular.forEach(item.parents, function(mp) {
+                // filter these out early, can't see them anyway
+                if (mp.prob < 1e-2)
+                    return;
                 var it = {
                     source: mp.parent.node,
                     target: mp.target.node,
@@ -320,7 +323,7 @@ var initialisePlots = function($scope, Reps, Items) {
         var mparents = [];
         var preds = [];
 
-        angular.forEach(item.marginalparents, function(par) {
+        angular.forEach(item.parents, function(par) {
             if(par !== undefined && par.prob > $scope.weightthresh)
                 mparents.push(par)
         });
@@ -463,39 +466,59 @@ app.controller('CSI', function ($scope) {
             ord: i,
             name: name,
             selected: true,
-            marginalparents: []
+            parents: []
         });
     }, items);
 
-    var allmarginals = []
-    angular.forEach(csires.results, function(res) {
-        var item = items[res.target];
-
-        var mpars = item.marginalparents;
-
-        angular.forEach(res.models, function(mod) {
+    $scope.marginalnetwork = function(item) {
+        var mpars = [];
+        angular.forEach(item.result.models, function(mod) {
             angular.forEach(mod.pset, function(parent) {
                 if (parent in mpars) {
                     mpars[parent].prob += mod.weight;
                 } else {
                     var it = {
-                        target : items[res.target],
+                        target : item,
                         parent : items[parent],
                         prob   : mod.weight
                     };
 
                     mpars[parent] = it;
-                    allmarginals.push(it);
                 }
             });
         });
+        return mpars;
+    };
 
+    $scope.mapnetwork = function(item) {
+        var mpars = [];
+        if (item.result.models.length > 0) {
+            mod = item.result.models[0]
+            angular.forEach(mod.pset, function(parent) {
+                if (parent in mpars) {
+                    mpars[parent].prob += mod.weight;
+                } else {
+                    var it = {
+                        target : item,
+                        parent : items[parent],
+                        prob   : mod.weight
+                    };
+
+                    mpars[parent] = it;
+                }
+            });
+        }
+        return mpars;
+    };
+
+    angular.forEach(csires.results, function(res) {
+        var item = items[res.target];
         item.result = res;
+        item.parents = $scope.mapnetwork(item);
     });
 
     $scope.weightthresh = 0.1;
     $scope.items = items;
-    $scope.allmarginals = allmarginals;
 
     makeNetwork($scope, items);
     initialisePlots($scope, csires.reps, items);
