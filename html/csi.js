@@ -482,9 +482,7 @@ var initialisePlots = function($scope, Reps, Items) {
     });
 
     $scope.$on('weightchanged', function() {
-        console.log("fred")
         if (curItem !== undefined) {
-            console.log("in fred")
             plotItem(curItem)
         }
     })
