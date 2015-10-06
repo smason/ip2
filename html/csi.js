@@ -145,10 +145,14 @@ var makeNetwork = function ($scope, Items) {
 	.enter().append("circle")
           .attr("r", 4);
 
+    // get dragging working
+    nodes
+        .call(force.drag)
+        .on("mousedown", function() { d3.event.stopPropagation(); });
+
     nodes
         .append("svg:title")
         .text(function(d) { return d.item.name; });
-
 
     force.on("tick", function () {
         links.attr("d", function(d) {
