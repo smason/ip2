@@ -296,7 +296,7 @@ var plotGpEst = function(time, muvar, lik, yscale) {
 };
 
 var initialisePlots = function($scope, Reps, Items) {
-    var outmargin = {top: 15, right: 5, bottom: 10, left: 40};
+    var outmargin = {top: 15, right: 15, bottom: 15, left: 40};
     var inmargin  = {top: 5, right: 5, bottom: 5, left: 5};
 
     var parent = d3.select("#parentplots"),
@@ -356,9 +356,9 @@ var initialisePlots = function($scope, Reps, Items) {
         preds.sort(function(a,b) { return b.weight - a.weight; })
 
         var nrows = mparents.length+1,
-            cheight = (70+inmargin.top+inmargin.bottom)*nrows+outmargin.top+outmargin.bottom,
-            height  = (cheight-outmargin.top-outmargin.bottom-inmargin.bottom)/nrows,
-            iheight = height-inmargin.bottom-inmargin.top;
+            iheight = 70,
+            height  = iheight+inmargin.top+inmargin.bottom,
+            cheight = height*nrows+outmargin.top+outmargin.bottom;
 
         svg.attr("height", cheight)
 
