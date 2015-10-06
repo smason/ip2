@@ -5,15 +5,13 @@
     display: inline-block;
 }
 #data-items {
-    width: 8rem;
+    width: 13rem;
+    font: 12px sans-serif;
     max-height: 35rem;
     overflow-y:scroll;
 }
-#data-item {
-    padding-left: 5px;
-}
 #graphpset {
-    width: calc(100% - 8rem - 20rem);
+    width: calc(100% - 13rem - 20rem);
     height: 35rem;
 }
 #graph {

@@ -8,9 +8,22 @@ app.filter('weight', function() {
 
 app.filter('parents', function() {
     return function(ps) {
-	return ps.join(", ");
+        return ps.join(", ");
     }
 });
+
+app.filter('netfilter', function() {
+    return function(list, threshold) {
+        var n = 0;
+        angular.forEach(list, function(item) {
+            if (item.prob > threshold)
+                n += 1;
+        });
+        return n;
+    }
+});
+
+
 
 app.filter('ParentalSetFilter', function() {
     return function(input, thresh) {
@@ -495,7 +508,8 @@ app.controller('CSI', function ($scope) {
             ord: i,
             name: name,
             selected: true,
-            parents: []
+            parents: [],
+            children: []
         });
     }, items);
 
@@ -544,14 +558,42 @@ app.controller('CSI', function ($scope) {
     angular.forEach(csires.results, function(res) {
         var item = items[res.target];
         item.result = res;
-        item.parents = $scope.marginalnetwork(item);
+        item.parents = $scope.mapnetwork(item);
         angular.forEach(item.parents, function (it) {
             if (it !== undefined) {
                 allmarginals.push(it)
+                it.parent.children.push(it);
             }
-        })
+        });
     });
 
+    $scope.setSelection = function() {
+        angular.forEach(items, function(item) {
+            item.selected = $scope.defaultsel;
+        });
+        $scope.$emit('itemchanged');
+    };
+
+    $scope.showParents = function(item) {
+        console.log(item)
+        angular.forEach(item.parents, function(it) {
+            if (it.prob > $scope.weightthresh) {
+                it.parent.selected = item.selected;
+            }
+        });
+        $scope.$emit('itemchanged');
+    };
+
+    $scope.showChildren = function(item) {
+        angular.forEach(item.children, function(it) {
+            if (it.prob > $scope.weightthresh) {
+                it.target.selected = item.selected;
+            }
+        });
+        $scope.$emit('itemchanged');
+    };
+
+    $scope.defaultsel = true;
     $scope.weightthresh = 0.1;
     $scope.items = items;
     $scope.allmarginals = allmarginals;
