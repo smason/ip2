@@ -115,6 +115,22 @@ var makeNetwork = function ($scope, Items) {
 
     var vis = svg.append("g");
 
+    function setVisTransform(translate, scale) {
+        vis.attr("transform",
+                 "translate(" + translate + ") " +
+                 "scale(" + scale + ")");
+    }
+
+    var zoomer = d3.behavior.zoom()
+        .scaleExtent([0.1,10])
+        .x(xScale)
+        .y(yScale)
+        .on("zoom", function() {
+            setVisTransform(d3.event.translate, d3.event.scale);
+        })
+
+    svg.call(zoomer)
+
     var links = vis.append("g")
         .attr("class", "link")
 	.selectAll()
