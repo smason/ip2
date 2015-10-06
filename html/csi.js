@@ -431,7 +431,18 @@ var initialisePlots = function($scope, Reps, Items) {
                             .attr("dy", "-1.71em")
                             .style("text-anchor", "middle")
                             .attr("transform", "rotate(-90)")
-                            .text(mp.parent.name+" : "+d3.format(".2f")(mp.prob))
+                            .text(mp.parent.name)
+                    }
+
+                    if (x+1 == nreps) {
+                        plt.append("text")
+                            .attr("class","axis label")
+                            .attr("x",-iheight/2)
+                            .attr("y",iwidth+10)
+                            .attr("dy", "1ex")
+                            .style("text-anchor", "middle")
+                            .attr("transform", "rotate(-90)")
+                            .text("Prob: "+d3.format(".2f")(mp.prob))
                     }
                 }
 
