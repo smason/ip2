@@ -221,6 +221,11 @@ var makeNetwork = function ($scope, Items) {
             .start();
     };
 
+    $scope.$on('networkchanged', function() {
+        collectAllEdges();
+        runWithIt();
+    });
+
     $scope.$on('overitem', function(evt,item,isover) {
         item.mouseover = isover;
         setStyles();
@@ -556,18 +561,25 @@ app.controller('CSI', function ($scope) {
         return mpars;
     };
 
-    allmarginals = [];
-    angular.forEach(csires.results, function(res) {
-        var item = items[res.target];
-        item.result = res;
-        item.parents = $scope.mapnetwork(item);
-        angular.forEach(item.parents, function (it) {
-            if (it !== undefined) {
-                allmarginals.push(it)
-                it.parent.children.push(it);
-            }
+    $scope.resetNetwork = function(itemfn) {
+        angular.forEach(csires.results, function(res) {
+            var item = items[res.target];
+            item.result = res;
+            item.parents = itemfn(item);
+            item.children = [];
         });
-    });
+        var allmarginals = [];
+        angular.forEach(items, function (item) {
+            angular.forEach(item.parents, function (it) {
+                if (it !== undefined) {
+                    allmarginals.push(it)
+                    it.parent.children.push(it);
+                }
+            });
+        });
+        $scope.allmarginals = allmarginals;
+        $scope.$emit('networkchanged');
+    };
 
     $scope.setSelection = function() {
         angular.forEach(items, function(item) {
@@ -612,8 +624,8 @@ app.controller('CSI', function ($scope) {
     $scope.defaultsel = true;
     $scope.weightthresh = 0.1;
     $scope.items = items;
-    $scope.allmarginals = allmarginals;
 
+    $scope.resetNetwork($scope.mapnetwork);
     makeNetwork($scope, items);
     initialisePlots($scope, csires.reps, items);
 });
