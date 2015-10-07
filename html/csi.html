@@ -51,13 +51,20 @@
 	  <tbody>
 	    <tr ng-repeat="item in items | orderBy : 'ord'">
 	      <td>
-		<label ng-mouseenter="$emit('mouseenter',item)" ng-mouseleave="$emit('mouseleave',item)">
+		<label ng-mouseenter="$emit('overitem',item,true)"
+		       ng-mouseleave="$emit('overitem',item,false)">
 		  <input type="checkbox" ng-model="item.selected"
-			 ng-change="$emit('itemchanged')"> {{item.name}}
+			 ng-change="$emit('itemschanged')"> {{item.name}}
 		</label>
 	      </td>
-	      <td ng-click="showParents(item)">{{item.parents  | netfilter : weightthresh}}</td>
-	      <td ng-click="showChildren(item)">{{item.children | netfilter : weightthresh}}</td>
+	      <td ng-mouseenter="$emit('overitems',itemParents(item),true)"
+		  ng-mouseleave="$emit('overitems',itemParents(item),false)"
+		  ng-click="showHideItems(itemParents(item))"
+		  >{{item.parents  | netfilter : weightthresh}}</td>
+	      <td ng-mouseenter="$emit('overitems',itemChildren(item),true)"
+		  ng-mouseleave="$emit('overitems',itemChildren(item),false)"
+		  ng-click="showHideItems(itemChildren(item))"
+		  >{{item.children | netfilter : weightthresh}}</td>
 	    </tr>
 	  </tbody>
 	</table>

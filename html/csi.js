@@ -223,17 +223,19 @@ var makeNetwork = function ($scope, Items) {
             .start();
     };
 
-    $scope.$on('mouseenter', function(evt,item) {
-	item.mouseover = true;
-	setStyles();
+    $scope.$on('overitem', function(evt,item,isover) {
+        item.mouseover = isover;
+        setStyles();
     });
 
-    $scope.$on('mouseleave', function(evt,item) {
-	item.mouseover = false;
-	setStyles();
+    $scope.$on('overitems', function(evt,items,isover) {
+        angular.forEach(items, function(it) {
+            it.mouseover = isover;
+        });
+        setStyles();
     });
 
-    $scope.$on('itemchanged', runWithIt);
+    $scope.$on('itemschanged', runWithIt);
 
     $scope.$on('weightchanged', function() {
         collectAllEdges();
@@ -489,9 +491,11 @@ var initialisePlots = function($scope, Reps, Items) {
     }
 
     var curItem;
-    $scope.$on('mouseenter', function(evt,item) {
-        plotItem(item);
-        curItem = item;
+    $scope.$on('overitem', function(evt,item,isover) {
+        if(isover) {
+            plotItem(item);
+            curItem = item;
+        }
     });
 
     $scope.$on('weightchanged', function() {
@@ -571,26 +575,40 @@ app.controller('CSI', function ($scope) {
         angular.forEach(items, function(item) {
             item.selected = $scope.defaultsel;
         });
-        $scope.$emit('itemchanged');
+        $scope.$emit('itemschanged');
     };
 
-    $scope.showParents = function(item) {
-        console.log(item)
+    $scope.itemParents = function(item) {
+        var list = [];
         angular.forEach(item.parents, function(it) {
             if (it.prob > $scope.weightthresh) {
-                it.parent.selected = item.selected;
+                list.push(it.parent)
             }
         });
-        $scope.$emit('itemchanged');
+        return list;
     };
 
-    $scope.showChildren = function(item) {
+    $scope.itemChildren = function(item) {
+        var list = [];
         angular.forEach(item.children, function(it) {
             if (it.prob > $scope.weightthresh) {
-                it.target.selected = item.selected;
+                list.push(it.target)
             }
         });
-        $scope.$emit('itemchanged');
+        return list;
+    };
+
+    $scope.showHideItems = function(list) {
+        var nsel = 0;
+        angular.forEach(list, function(it) {
+            if (it.selected)
+                nsel += 1;
+        });
+        var newsel = nsel / list.length < 0.5;
+        angular.forEach(list, function(it) {
+            it.selected = newsel;
+        });
+        $scope.$emit('itemschanged');
     };
 
     $scope.defaultsel = true;
