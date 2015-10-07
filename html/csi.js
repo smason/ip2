@@ -77,11 +77,12 @@ var makeNetwork = function ($scope, Items) {
     });
 
     var collectAllEdges = function() {
+        var minprob = d3.max([1e-2,$scope.weightthresh])
         edges = [];
         angular.forEach(Items, function(item) {
             angular.forEach(item.parents, function(mp) {
                 // filter these out early, can't see them anyway
-                if (mp.prob < 1e-2)
+                if (mp.prob < minprob)
                     return;
                 var it = {
                     source: mp.parent.node,
@@ -89,8 +90,7 @@ var makeNetwork = function ($scope, Items) {
                     mpar: mp,
                     selected: function() {
                         return (mp.parent.selected &&
-                                mp.target.selected &&
-                                mp.prob > $scope.weightthresh);
+                                mp.target.selected);
                     }
                 };
                 edges.push(it);
@@ -142,27 +142,33 @@ var makeNetwork = function ($scope, Items) {
 
     svg.call(zoomer)
 
-    var links = vis.append("g")
+    var edgeVis = vis
+      .append("g")
+        .attr("class","edges");
+
+    var links = edgeVis
+        .selectAll(".link")
+        .data(edges)
+      .enter().append("path")
         .attr("class", "link")
-	.selectAll()
-        .data(edges).enter().append("path")
         .style("marker-end", "url(#arrow)")
         .style("stroke-width", function(l) { return 2 * l.mpar.prob; });
 
-    var nodes = vis.append("g")
-	.attr("class", "node")
-	.selectAll()
-	.data(items)
-	.enter().append("circle")
-          .attr("r", 4);
+    var nodes = vis
+        .append("g")
+        .attr("class","nodes")
+        .selectAll(".node")
+        .data(items)
+      .enter().append("circle")
+        .attr("class", "node")
+        .attr("r", 4);
 
-    // get dragging working
-    nodes
-        .call(force.drag)
+    // enable dragging of nodes
+    nodes.call(force.drag)
         .on("mousedown", function() { d3.event.stopPropagation(); });
 
-    nodes
-        .append("svg:title")
+    // set node titles
+    nodes.append("title")
         .text(function(d) { return d.item.name; });
 
     force.on("tick", function () {
@@ -186,7 +192,7 @@ var makeNetwork = function ($scope, Items) {
     var setStyles = function() {
 	// show/hide the nodes and edges as appropriate
 	nodes.attr('class', function(n) {
-	    var str = '';
+            var str = 'node';
 	    if (n.item.mouseover)
 		str += ' mouseover';
 	    if (n.selected())
@@ -198,16 +204,14 @@ var makeNetwork = function ($scope, Items) {
 	});
 
 	links.attr('class', function(l) {
-	    var str = '';
+            var str = 'link';
 	    if (l.selected())
 		str += ' selected';
-	    if (l.mpar.prob > 0.01) {
-		if(l.source.item.mouseover && l.target.selected())
-		    str += ' mouseovertarget';
-		else if (l.target.item.mouseover && l.source.selected())
-		    str += ' mouseoverparent';
-	    }
-	    return str;
+            if(l.source.item.mouseover && l.target.selected())
+                str += ' mouseovertarget';
+            else if (l.target.item.mouseover && l.source.selected())
+                str += ' mouseoverparent';
+            return str;
 	});
     };
 
@@ -221,10 +225,21 @@ var makeNetwork = function ($scope, Items) {
             .start();
     };
 
-    $scope.$on('networkchanged', function() {
+    var createLinks = function () {
         collectAllEdges();
+
+        edgeVis.selectAll(".link").remove();
+
+        links = edgeVis
+            .selectAll(".link")
+            .data(edges)
+          .enter().append("path")
+            .attr("class", "link")
+            .style("marker-end", "url(#arrow)")
+            .style("stroke-width", function(l) { return 2 * l.mpar.prob; });
+
         runWithIt();
-    });
+    }
 
     $scope.$on('overitem', function(evt,item,isover) {
         item.mouseover = isover;
@@ -239,11 +254,9 @@ var makeNetwork = function ($scope, Items) {
     });
 
     $scope.$on('itemschanged', runWithIt);
+    $scope.$on('networkchanged', createLinks);
 
-    $scope.$watch('weightthresh', function() {
-        collectAllEdges();
-        runWithIt();
-    });
+    $scope.$watch('weightthresh', createLinks);
 
     runWithIt();
 }

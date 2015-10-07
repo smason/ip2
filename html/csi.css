@@ -46,22 +46,22 @@
 .selected  { visibility: visible; }
 .mouseover { visibility: visible; }
 
-.node .mouseover {
+.node.mouseover {
     stroke: royalblue;
     stroke-width: 1pt;
     fill: white;
 }
 
-.node .mouseover.selected {
+.node.mouseover.selected {
     fill: black;
     stroke-width: 2pt;
 }
 
-.link .mouseovertarget {
+.link.mouseovertarget {
     stroke: royalblue;
 }
 
-.link .mouseoverparent {
+.link.mouseoverparent {
     stroke: crimson;
 }
 
