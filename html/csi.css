@@ -5,13 +5,13 @@
     display: inline-block;
 }
 #data-items {
-    width: 13rem;
+    width: 25rem;
     font: 12px sans-serif;
     max-height: 35rem;
     overflow-y:scroll;
 }
 #graphpset {
-    width: calc(100% - 13rem - 20rem);
+    width: calc(100% - 25rem);
     height: 35rem;
 }
 #graph {
@@ -20,13 +20,6 @@
 #expdata, #parentplots {
     min-height: 20rem;
     font: 10px sans-serif;
-}
-
-#parental-set {
-    font: 12px sans-serif;
-    width: 20rem;
-    max-height: 35rem;
-    overflow-y:scroll;
 }
 
 .node {

@@ -1,37 +1,23 @@
 var app = angular.module("CsiResults",[]);
 
-app.filter('weight', function() {
-    return function(w) {
-	return w.toPrecision(3);
-    }
+app.controller('ItemSorter', function($scope) {
+    var prev = $scope.predicate = 'ord';
+
+    $scope.order = function(pred) {
+        if (pred === prev)
+            pred = $scope.predicate = 'ord';
+        else if (pred === 'name')       $scope.predicate = 'name';
+        else if (pred === 'nparents')   $scope.predicate = '-nparents';
+        else if (pred === 'nchildren')  $scope.predicate = '-nchildren';
+        else if (pred === 'bestweight') $scope.predicate = '-bestweight';
+        prev = pred;
+    };
 });
 
 app.filter('parents', function() {
     return function(ps) {
         return ps.join(", ");
     }
-});
-
-app.filter('netfilter', function() {
-    return function(list, threshold) {
-        var n = 0;
-        angular.forEach(list, function(item) {
-            if (item.prob > threshold)
-                n += 1;
-        });
-        return n;
-    }
-});
-
-app.filter('ParentalSetFilter', function() {
-    return function(input, thresh) {
-	var out = [];
-	for (var i = 0; i < input.length; i++){
-            if(input[i].target.selected && input[i].prob > thresh)
-		out.push(input[i]);
-	}
-	return out;
-    };
 });
 
 var makeNetwork = function ($scope, Items) {
@@ -473,7 +459,7 @@ var initialisePlots = function($scope, Reps, Items) {
                             .attr("dy", "1ex")
                             .style("text-anchor", "middle")
                             .attr("transform", "rotate(-90)")
-                            .text("Prob: "+d3.format(".2f")(mp.prob))
+                            .text("Prob: "+$scope.weightformat(mp.prob))
                     }
                 }
 
@@ -580,6 +566,9 @@ app.controller('CSI', function ($scope) {
             item.result = res;
             item.parents = itemfn(item);
             item.children = [];
+
+            var m0 = res.models[0];
+            item.bestweight = (m0 && m0.weight) || 0;
         });
         var allmarginals = [];
         angular.forEach(items, function (item) {
@@ -593,6 +582,22 @@ app.controller('CSI', function ($scope) {
         $scope.allmarginals = allmarginals;
         $scope.$emit('networkchanged');
     };
+
+    $scope.setItemSummary = function() {
+        angular.forEach(items, function (item) {
+            item.nparents  = 0;
+            item.nchildren = 0;
+        });
+        angular.forEach($scope.allmarginals, function (it) {
+            if (it.prob > $scope.weightthresh) {
+                it.target.nparents  += 1;
+                it.parent.nchildren += 1;
+            }
+        });
+    };
+
+    $scope.$watch('weightthresh', $scope.setItemSummary);
+    $scope.$on('networkchanged', $scope.setItemSummary);
 
     $scope.setSelection = function() {
         angular.forEach(items, function(item) {
@@ -634,6 +639,7 @@ app.controller('CSI', function ($scope) {
         $scope.$emit('itemschanged');
     };
 
+    $scope.weightformat = d3.format(".2f");
     $scope.defaultsel = true;
     $scope.weightthresh = 0.1;
     $scope.items = items;
