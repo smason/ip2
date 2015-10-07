@@ -23,8 +23,6 @@ app.filter('netfilter', function() {
     }
 });
 
-
-
 app.filter('ParentalSetFilter', function() {
     return function(input, thresh) {
 	var out = [];
@@ -237,7 +235,7 @@ var makeNetwork = function ($scope, Items) {
 
     $scope.$on('itemschanged', runWithIt);
 
-    $scope.$on('weightchanged', function() {
+    $scope.$watch('weightthresh', function() {
         collectAllEdges();
         runWithIt();
     });
@@ -498,7 +496,7 @@ var initialisePlots = function($scope, Reps, Items) {
         }
     });
 
-    $scope.$on('weightchanged', function() {
+    $scope.$watch('weightthresh', function() {
         if (curItem !== undefined) {
             plotItem(curItem)
         }
@@ -506,7 +504,7 @@ var initialisePlots = function($scope, Reps, Items) {
 }
 
 app.controller('CSI', function ($scope) {
-    var items =	[];
+    var items = [];
     angular.forEach(csires.items, function(name,i) {
         this.push({
             ord: i,
