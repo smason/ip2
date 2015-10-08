@@ -17,19 +17,19 @@
       <div class="pure-menu pure-menu-horizontal">
 	<ul class="pure-menu-list">
           <li class="pure-menu-item pure-menu-has-children pure-menu-allow-hover">
-            <a href="#" id="menuFile" class="pure-menu-link">File</a>
+            <a href="" id="menuFile" class="pure-menu-link">File</a>
             <ul class="pure-menu-children">
-	      <li class="pure-menu-item"><a href="#" class="pure-menu-link">Export to Cytoscape</a></li>
+	      <li class="pure-menu-item"><a href="" class="pure-menu-link">Export to Cytoscape</a></li>
             </ul>
           </li>
           <li class="pure-menu-item pure-menu-has-children pure-menu-allow-hover">
-            <a href="#" id="menuFile" class="pure-menu-link">Network</a>
+            <a href="" id="menuFile" class="pure-menu-link">Network</a>
             <ul class="pure-menu-children">
 	      <li class="pure-menu-item"><a href="" class="pure-menu-link" ng-click="resetNetwork(marginalnetwork)">Marginal</a></li>
 	      <li class="pure-menu-item"><a href="" class="pure-menu-link" ng-click="resetNetwork(mapnetwork)">MAP</a></li>
             </ul>
           </li>
-	  <li class="pure-menu-item"><a href="#" class="pure-menu-link">Citation</a></li>
+	  <li class="pure-menu-item"><a href=""class="pure-menu-link">Citation</a></li>
 	</ul>
       </div>
     </div>
@@ -79,15 +79,15 @@
 	      <td ng-mouseenter="$emit('overitems',itemParents(item),true)"
 		  ng-mouseleave="$emit('overitems',itemParents(item),false)"
 		  ng-click="showHideItems(itemParents(item))"
-		  >{{item.nparents}}</td>
+		  ng-bind="item.nparents"></td>
 	      <td ng-mouseenter="$emit('overitems',itemChildren(item),true)"
 		  ng-mouseleave="$emit('overitems',itemChildren(item),false)"
 		  ng-click="showHideItems(itemChildren(item))"
-		  >{{item.nchildren}}</td>
-	      <td>{{item.bestweight | weightformat}}</td>
-	      <td>{{item.result.hyperparams[0] | hyperformat}}</td>
-	      <td>{{item.result.hyperparams[1] | hyperformat}}</td>
-	      <td>{{item.result.hyperparams[2] | hyperformat}}</td>
+		  ng-bind="item.nchildren"></td>
+	      <td>{{item.bestweight | weight}}</td>
+	      <td>{{item.result.hyperparams[0] | hyperpar}}</td>
+	      <td>{{item.result.hyperparams[1] | hyperpar}}</td>
+	      <td>{{item.result.hyperparams[2] | hyperpar}}</td>
 	    </tr>
 	  </tbody>
 	</table>
@@ -105,8 +105,9 @@
 	  </tr>
 	</thead>
 	<tbody>
-	  <tr ng-repeat="res in itemresultsx">
-	    <td>{{res.
+	  <tr ng-repeat="mod in itemresults.result.models | limitTo:100">
+	    <td ng-bind-html="itemnames(mod.pset)"></td>
+	    <td>{{mod.weight | longweight}}</td>
 	  </tr>
 	</tbody>
       </table>

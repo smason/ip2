@@ -23,13 +23,29 @@ app.filter('parents', function() {
     };
 });
 
-app.filter('weightformat', function() {
-    return d3.format(".2f");
+app.filter('weight', function() {
+    var fmt = d3.format(".2f");
+    return function(x) {
+        if (x === undefined)
+            return "";
+        return fmt(x);
+    };
 });
 
-app.filter('hyperformat',  function() {
+app.filter('longweight', function() {
+    var fmt = d3.format(".4g");
+    return function(x) {
+        if (x === undefined)
+            return "";
+        return fmt(x);
+    };
+});
+
+app.filter('hyperpar',  function() {
     var fmt = d3.format(".2g");
     return function(x) {
+        if (x === undefined)
+            return "";
         return fmt(Math.sqrt(x));
     };
 });
@@ -326,7 +342,7 @@ var plotGpEst = function(time, muvar, lik, yscale) {
     return plot;
 };
 
-var initialisePlots = function($scope, Reps, Items) {
+var initialisePlots = function($scope, $filter, Reps, Items) {
     var outmargin = {top: 15, right: 15, bottom: 15, left: 40};
     var inmargin  = {top: 5, right: 5, bottom: 5, left: 5};
 
@@ -337,6 +353,8 @@ var initialisePlots = function($scope, Reps, Items) {
         iwidth  = width-inmargin.right-inmargin.left;
 
     var color = d3.scale.category10();
+
+    var weightformat = $filter("weight");
 
     var rangeScale = function (r, m) {
         var d = (r[1] - r[0]) * m;
@@ -473,7 +491,7 @@ var initialisePlots = function($scope, Reps, Items) {
                             .attr("dy", "1ex")
                             .style("text-anchor", "middle")
                             .attr("transform", "rotate(-90)")
-                            .text("Prob: "+$scope.weightformat(mp.prob))
+                            .text("Prob: "+weightformat(mp.prob))
                     }
                 }
 
@@ -521,7 +539,7 @@ var initialisePlots = function($scope, Reps, Items) {
     })
 }
 
-app.controller('CSI', function ($scope) {
+app.controller('CSI', ['$scope', '$filter', '$sce', function ($scope, $filter, $sce) {
     var items = [];
     angular.forEach(csires.items, function(name,i) {
         this.push({
@@ -582,7 +600,7 @@ app.controller('CSI', function ($scope) {
             item.children = [];
 
             var m0 = res.models[0];
-            item.bestweight = (m0 && m0.weight) || 0;
+            item.bestweight = (m0 && m0.weight) || undefined;
         });
         var allmarginals = [];
         angular.forEach(items, function (item) {
@@ -654,14 +672,26 @@ app.controller('CSI', function ($scope) {
     };
 
     $scope.showItemResults = function(item) {
-        console.log(item)
+        item.curparents = $scope.itemParents(item).map(function(it) { return it.ord; });
+        $scope.itemresults = item;
     };
 
+    $scope.itemnames = function(x) {
+        var x = x.map(function(i) {
+            var parid = $scope.itemParents(item).map(function(it) { return it.ord; });
+            var str;
+            if (i in )
+            return '<span class="">'+items[i].name+'</span>';
+        });
+        return $sce.trustAsHtml(x.join(", "));
+    };
+
+    $scope.itemresults = [];
     $scope.defaultsel = true;
     $scope.weightthresh = 0.1;
     $scope.items = items;
 
     $scope.resetNetwork($scope.mapnetwork);
     makeNetwork($scope, items);
-    initialisePlots($scope, csires.reps, items);
-});
+    initialisePlots($scope, $filter, csires.reps, items);
+}]);
