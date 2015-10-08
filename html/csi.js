@@ -10,6 +10,9 @@ app.controller('ItemSorter', function($scope) {
         else if (pred === 'nparents')   $scope.predicate = '-nparents';
         else if (pred === 'nchildren')  $scope.predicate = '-nchildren';
         else if (pred === 'bestweight') $scope.predicate = '-bestweight';
+        else if (pred === 'gpf')        $scope.predicate = 'result.hyperparams[0]';
+        else if (pred === 'gpl')        $scope.predicate = 'result.hyperparams[1]';
+        else if (pred === 'gpn')        $scope.predicate = 'result.hyperparams[2]';
         prev = pred;
     };
 });
@@ -17,7 +20,18 @@ app.controller('ItemSorter', function($scope) {
 app.filter('parents', function() {
     return function(ps) {
         return ps.join(", ");
-    }
+    };
+});
+
+app.filter('weightformat', function() {
+    return d3.format(".2f");
+});
+
+app.filter('hyperformat',  function() {
+    var fmt = d3.format(".2g");
+    return function(x) {
+        return fmt(Math.sqrt(x));
+    };
 });
 
 var makeNetwork = function ($scope, Items) {
@@ -639,7 +653,10 @@ app.controller('CSI', function ($scope) {
         $scope.$emit('itemschanged');
     };
 
-    $scope.weightformat = d3.format(".2f");
+    $scope.showItemResults = function(item) {
+        console.log(item)
+    };
+
     $scope.defaultsel = true;
     $scope.weightthresh = 0.1;
     $scope.items = items;

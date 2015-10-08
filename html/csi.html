@@ -46,14 +46,23 @@
 		<span ng-click="order('name')">Genes</span>
 	      </td>
 	      <td>
-		<abbr ng-click="order('nparents')" title="Inferred Parent Genes">Prnt</abbr>
+		<abbr ng-click="order('nparents')"
+		      title="Number of Inferred Parent Genes">Prnt</abbr>
 	      </td>
 	      <td>
-		<abbr ng-click="order('nchildren')" title="Inferred Child Genes">Chld</abbr>
+		<abbr ng-click="order('nchildren')"
+		      title="Number of Inferred Child Genes">Chld</abbr>
 	      </td>
 	      <td>
-		<abbr ng-click="order('bestweight')" title="Weight Assigned to Best Parental Set">Fit</abbr>
+		<abbr ng-click="order('bestweight')"
+		      title="Weight Assigned to Best Parental Set">Fit</abbr>
 	      </td>
+	      <td><abbr ng-click="order('gpf')"
+			title="Standard Deviation of Gaussian-Process Function">GP-F</abbr></td>
+	      <td><abbr ng-click="order('gpl')"
+			title="Length-scale of Gaussian-Process Function">GP-L</abbr></td>
+	      <td><abbr ng-click="order('gpn')"
+			title="Standard Deviation of Residual Noise">GP-N</abbr></td>
 	    </tr>
 	  </thead>
 	  <tbody>
@@ -64,6 +73,8 @@
 		  <input type="checkbox" ng-model="item.selected"
 			 ng-change="$emit('itemschanged')"> {{item.name}}
 		</label>
+		<abbr ng-click="showItemResults(item)"
+		      title="More Details…">[+]</abbr>
 	      </td>
 	      <td ng-mouseenter="$emit('overitems',itemParents(item),true)"
 		  ng-mouseleave="$emit('overitems',itemParents(item),false)"
@@ -73,7 +84,10 @@
 		  ng-mouseleave="$emit('overitems',itemChildren(item),false)"
 		  ng-click="showHideItems(itemChildren(item))"
 		  >{{item.nchildren}}</td>
-	      <td>{{weightformat(item.bestweight)}}</td>
+	      <td>{{item.bestweight | weightformat}}</td>
+	      <td>{{item.result.hyperparams[0] | hyperformat}}</td>
+	      <td>{{item.result.hyperparams[1] | hyperformat}}</td>
+	      <td>{{item.result.hyperparams[2] | hyperformat}}</td>
 	    </tr>
 	  </tbody>
 	</table>
@@ -81,6 +95,21 @@
       </div></div><div id="parentplots"></div></div>
     <div id="footer">
       CSI Analysis Footer
+    </div>
+    <div>
+      <table class="pure-table">
+	<thead>
+	  <tr>
+	    <td>Parental Set</td>
+	    <td>Weight</td>
+	  </tr>
+	</thead>
+	<tbody>
+	  <tr ng-repeat="res in itemresultsx">
+	    <td>{{res.
+	  </tr>
+	</tbody>
+      </table>
     </div>
   </body>
 </html>
