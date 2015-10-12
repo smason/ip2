@@ -22,12 +22,24 @@
     font: 10px sans-serif;
 }
 
+#itemresults {
+    font: 12px sans-serif;
+    position: absolute;
+    background-color: white;
+    max-height: 35rem;
+    overflow-y: scroll;
+}
+
 .node {
     visibility: hidden;
 }
 
 #arrow {
     fill: crimson;
+}
+
+.iteminpset {
+    font-weight: bolder;
 }
 
 .link {
@@ -72,5 +84,5 @@
 
 .label {
     font-size: 12px;
-    font-weight: bold
+    font-weight: bold;
 }

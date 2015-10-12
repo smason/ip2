@@ -73,7 +73,7 @@
 		  <input type="checkbox" ng-model="item.selected"
 			 ng-change="$emit('itemschanged')"> {{item.name}}
 		</label>
-		<abbr ng-click="showItemResults(item)"
+                <abbr ng-click="showItemResults(item, $event)"
 		      title="More Details…">[+]</abbr>
 	      </td>
 	      <td ng-mouseenter="$emit('overitems',itemParents(item),true)"
@@ -96,7 +96,7 @@
     <div id="footer">
       CSI Analysis Footer
     </div>
-    <div>
+    <div id="itemresults" ng-style="itemresultsstyle" ng-click="hideItemResults()">
       <table class="pure-table">
 	<thead>
 	  <tr>
@@ -106,7 +106,7 @@
 	</thead>
 	<tbody>
 	  <tr ng-repeat="mod in itemresults.result.models | limitTo:100">
-	    <td ng-bind-html="itemnames(mod.pset)"></td>
+            <td ng-bind-html="mod.pset | parents : itemresults : weightthresh"></td>
 	    <td>{{mod.weight | longweight}}</td>
 	  </tr>
 	</tbody>

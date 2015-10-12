@@ -17,9 +17,19 @@ app.controller('ItemSorter', function($scope) {
     };
 });
 
-app.filter('parents', function() {
-    return function(ps) {
-        return ps.join(", ");
+app.filter('parents', function($sce) {
+    var names = csires.items;
+    return function(pset, item, threshold) {
+        var x = pset.map(function(i) {
+            var par = item.parents[i];
+            if (par === undefined || par.prob < threshold)
+                return names[i];
+
+            return ('<span class="iteminpset">'+
+                    names[i]+
+                    '</span>');
+        });
+        return $sce.trustAsHtml(x.join(", "));
     };
 });
 
@@ -539,7 +549,7 @@ var initialisePlots = function($scope, $filter, Reps, Items) {
     })
 }
 
-app.controller('CSI', ['$scope', '$filter', '$sce', function ($scope, $filter, $sce) {
+app.controller('CSI', function ($scope, $filter) {
     var items = [];
     angular.forEach(csires.items, function(name,i) {
         this.push({
@@ -671,22 +681,20 @@ app.controller('CSI', ['$scope', '$filter', '$sce', function ($scope, $filter, $
         $scope.$emit('itemschanged');
     };
 
-    $scope.showItemResults = function(item) {
+    $scope.showItemResults = function(item, event) {
+        $scope.itemresultsstyle.display = undefined;
+        $scope.itemresultsstyle.left = event.pageX+'px';
+        $scope.itemresultsstyle.top  = event.pageY+'px';
         item.curparents = $scope.itemParents(item).map(function(it) { return it.ord; });
         $scope.itemresults = item;
     };
 
-    $scope.itemnames = function(x) {
-        var x = x.map(function(i) {
-            var parid = $scope.itemParents(item).map(function(it) { return it.ord; });
-            var str;
-            if (i in )
-            return '<span class="">'+items[i].name+'</span>';
-        });
-        return $sce.trustAsHtml(x.join(", "));
+    $scope.hideItemResults = function() {
+        $scope.itemresultsstyle.display = 'none';
     };
 
-    $scope.itemresults = [];
+    $scope.itemresultsstyle = {display: 'none'};
+    $scope.itemresults = undefined;
     $scope.defaultsel = true;
     $scope.weightthresh = 0.1;
     $scope.items = items;
@@ -694,4 +702,4 @@ app.controller('CSI', ['$scope', '$filter', '$sce', function ($scope, $filter, $
     $scope.resetNetwork($scope.mapnetwork);
     makeNetwork($scope, items);
     initialisePlots($scope, $filter, csires.reps, items);
-}]);
+});
