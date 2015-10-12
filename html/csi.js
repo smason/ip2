@@ -693,6 +693,60 @@ app.controller('CSI', function ($scope, $filter) {
         $scope.itemresultsstyle.display = 'none';
     };
 
+    function download(filename, text) {
+        var elem = document.createElement('a');
+        elem.setAttribute('href', 'data:text/plain;charset=utf-8,' +
+            encodeURIComponent(text));
+        elem.setAttribute('download', filename);
+
+        // just in case!
+        elem.style.display = 'none';
+
+        document.body.appendChild(elem);
+        try {
+            elem.click();
+        } finally {
+            // make sure we clean up after ourselves
+            document.body.removeChild(elem);
+        }
+
+        return false;
+    }
+
+    $scope.doCytoscapeExport = function() {
+        var lines = [
+            "graph [",
+            "directed 1"
+        ];
+
+        angular.forEach($scope.items, function(item) {
+            if(!item.selected)
+                return;
+            lines.push("node [")
+            lines.push("id "+item.ord)
+            lines.push("label \""+item.name+"\"")
+            lines.push("numparents "+item.nparents)
+            lines.push("numchildren "+item.nchildren)
+            lines.push("]")
+        });
+
+        angular.forEach($scope.allmarginals, function (it) {
+            if (it.prob < $scope.weightthresh)
+                return;
+            if (!it.target.selected || !it.parent.selected)
+                return;
+            lines.push("edge [")
+            lines.push("source "+it.parent.ord)
+            lines.push("target "+it.target.ord)
+            lines.push("weight "+it.prob)
+            lines.push("]")
+        });
+
+        lines.push("]")
+
+        download("csi_network_for_cytoscape.gml", lines.join("\n"))
+    };
+
     $scope.itemresultsstyle = {display: 'none'};
     $scope.itemresults = undefined;
     $scope.defaultsel = true;
