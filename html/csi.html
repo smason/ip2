@@ -25,12 +25,13 @@
           <li class="pure-menu-item pure-menu-has-children pure-menu-allow-hover">
             <a href="" id="menuFile" class="pure-menu-link">Network</a>
             <ul class="pure-menu-children">
-	      <li class="pure-menu-item"><a href="" class="pure-menu-link" ng-click="resetNetwork(marginalnetwork)">Marginal</a></li>
-	      <li class="pure-menu-item"><a href="" class="pure-menu-link" ng-click="resetNetwork(mapnetwork)">MAP</a></li>
+              <li class="pure-menu-item"><a href="" class="pure-menu-link" ng-click="resetNetwork('marginal')">Marginal</a></li>
+              <li class="pure-menu-item"><a href="" class="pure-menu-link" ng-click="resetNetwork('map')">MAP</a></li>
             </ul>
           </li>
-	  <li class="pure-menu-item"><a href=""class="pure-menu-link">Citation</a></li>
-	</ul>
+          <li class="pure-menu-item"><a href=""class="pure-menu-link">Citation</a></li>
+          <li class="pure-menu-item"><a href=""class="pure-menu-link">Help</a></li>
+        </ul>
       </div>
     </div>
 
@@ -74,7 +75,7 @@
 			 ng-change="$emit('itemschanged')"> {{item.name}}
 		</label>
                 <abbr ng-click="showItemResults(item, $event)"
-		      title="More Details…">[+]</abbr>
+                      title="Model Details…">[+]</abbr>
 	      </td>
 	      <td ng-mouseenter="$emit('overitems',itemParents(item),true)"
 		  ng-mouseleave="$emit('overitems',itemParents(item),false)"
@@ -93,9 +94,6 @@
 	</table>
       </div><div id="graphpset"><div id="graph">
       </div></div><div id="parentplots"></div></div>
-    <div id="footer">
-      CSI Analysis Footer
-    </div>
     <div id="itemresults" ng-style="itemresultsstyle" ng-click="hideItemResults()">
       <table class="pure-table">
 	<thead>
@@ -106,11 +104,14 @@
 	</thead>
 	<tbody>
 	  <tr ng-repeat="mod in itemresults.result.models | limitTo:100">
-            <td ng-bind-html="mod.pset | parents : itemresults : weightthresh"></td>
+            <td ng-bind-html="mod.pset | parents : itemresults : networktype : weightthresh"></td>
 	    <td>{{mod.weight | longweight}}</td>
 	  </tr>
 	</tbody>
       </table>
+    </div>
+    <div id="footer">
+      Visualisation of results from CSI model, please contact <a href="sam@samason.uk">Sam Mason</a> for technical support.
     </div>
   </body>
 </html>

@@ -19,16 +19,31 @@ app.controller('ItemSorter', function($scope) {
 
 app.filter('parents', function($sce) {
     var names = csires.items;
-    return function(pset, item, threshold) {
-        var x = pset.map(function(i) {
-            var par = item.parents[i];
-            if (par === undefined || par.prob < threshold)
-                return names[i];
+    return function(pset, item, networktype, threshold) {
+        var x;
+        if(networktype === 'map') {
+            if(pset == item.result.models[0].pset) {
+                x = pset.map(function(i) {
+                    return ('<span class="iteminpset">'+
+                            names[i]+
+                            '</span>');
+                });
+            } else {
+                x = pset.map(function(i) {
+                    return names[i];
+                });
+            }
+        } else {
+            x = pset.map(function(i) {
+                var par = item.parents[i];
+                if (par === undefined || par.prob < threshold)
+                    return names[i];
 
-            return ('<span class="iteminpset">'+
-                    names[i]+
-                    '</span>');
-        });
+                return ('<span class="iteminpset">'+
+                        names[i]+
+                        '</span>');
+            });
+        }
         return $sce.trustAsHtml(x.join(", "));
     };
 });
@@ -602,7 +617,14 @@ app.controller('CSI', function ($scope, $filter) {
         return mpars;
     };
 
-    $scope.resetNetwork = function(itemfn) {
+    networkfns = {
+        marginal: $scope.marginalnetwork,
+        map:      $scope.mapnetwork
+    };
+
+    $scope.resetNetwork = function(nettype) {
+        $scope.networktype = nettype;
+        itemfn = networkfns[nettype];
         angular.forEach(csires.results, function(res) {
             var item = items[res.target];
             item.result = res;
@@ -699,7 +721,7 @@ app.controller('CSI', function ($scope, $filter) {
     $scope.weightthresh = 0.1;
     $scope.items = items;
 
-    $scope.resetNetwork($scope.mapnetwork);
+    $scope.resetNetwork('map');
     makeNetwork($scope, items);
     initialisePlots($scope, $filter, csires.reps, items);
 });
