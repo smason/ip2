@@ -769,7 +769,18 @@ app.controller('CSI', function ($scope, $filter) {
         download("csi_network_for_cytoscape.gml", lines.join("\n"))
     };
 
+    $scope.showCitationInformation = function(event) {
+        $scope.citationstyle.display = undefined;
+        $scope.citationstyle.left = event.pageX+'px';
+        $scope.citationstyle.top  = event.pageY+'px';
+    };
+
+    $scope.hideCitationInformation = function() {
+        $scope.citationstyle.display = 'none';
+    }
+
     $scope.itemresultsstyle = {display: 'none'};
+    $scope.citationstyle = {display: 'none'};
     $scope.itemresults = undefined;
     $scope.defaultsel = true;
     $scope.weightthresh = 0.1;

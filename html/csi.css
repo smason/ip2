@@ -23,11 +23,21 @@
 }
 
 #itemresults {
-    font: 12px sans-serif;
     position: absolute;
+    font: 12px sans-serif;
     background-color: white;
     max-height: 35rem;
     overflow-y: scroll;
+}
+
+#citation {
+    position: absolute;
+    font: 12px sans-serif;
+    background-color: white;
+    max-width: 30rem;
+    padding: 1ex;
+    border: 2px solid grey;
+    border-radius: 1ex;
 }
 
 .node {

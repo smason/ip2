@@ -30,8 +30,9 @@
               <li class="pure-menu-item"><a href="" class="pure-menu-link" ng-click="resetNetwork('map')">MAP</a></li>
             </ul>
           </li>
-          <li class="pure-menu-item"><a href=""class="pure-menu-link">Citation</a></li>
-          <li class="pure-menu-item"><a href=""class="pure-menu-link">Help</a></li>
+          <li class="pure-menu-item"><a href="" class="pure-menu-link" ng-click="showCitationInformation($event)">
+            Citation</a></li>
+          <li class="pure-menu-item"><a href="" class="pure-menu-link">Help</a></li>
         </ul>
       </div>
     </div>
@@ -111,7 +112,22 @@
 	</tbody>
       </table>
     </div>
-    <div id="footer">
+    <div id="citation" ng-style="citationstyle">
+      <h1>Citation Information</h1>
+      <p><code>
+Penfold, C. A., & Wild, D. L. (2011). How to
+infer gene networks from expression profiles,
+revisited. Interface Focus, 1(6), 857-870.
+      </code></p>
+      <div>
+        <a href="https://dx.doi.org/10.1098/rsfs.2011.0053">doi:10.1098/rsfs.2011.0053</a> |
+        <a href="https://www.ncbi.nlm.nih.gov/pubmed/23226586">Pub Med</a> |
+        <a href="http://rsfs.royalsocietypublishing.org/content/1/6/857.short">Interface Focus</a>
+
+        <input style="float:right" type="button" value="Close" ng-click="hideCitationInformation()">
+      </div>
+    </div>
+    <div id="footer" style="padding: 1ex">
       Visualisation of results from CSI model, please contact <a href="sam@samason.uk">Sam Mason</a> for technical support.
     </div>
   </body>
