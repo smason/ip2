@@ -45,8 +45,10 @@ def get_dom(mod, min_weight=1e-5, min_predict=1e-2, maxmodels=1000, maxpredict=2
             models=models[:maxmodels])
         results.append(out)
 
-        logging.info("%s: %i models and %i predictions output (weights=%s)",
-                     items[res.target], len(models), npredict, str(res.weights[:3]))
+        logging.info("%s: %i models (of %i) and %i predictions (of %i) output (weights=%s)",
+                     items[res.target],
+                     len(out["models"]), len(models),
+                     sum(["predict" in m for m in out["models"]]), npredict, str(res.weights[:3]))
 
     return dict(
         items=items,
@@ -71,7 +73,8 @@ def cmdparser(args):
     op.set_usage("usage: %prog [options] FILE1.hdf5 [FILE2.hdf5]")
     op.set_defaults(
         verbose=False,
-        min_weight=1e-5)
+        min_weight=1e-5,
+        num_weight=100)
 
     # define general parameters
     op.add_option('-v','--verbose',dest='verbose',action='count',
@@ -81,8 +84,15 @@ def cmdparser(args):
                   help="Only extract parental with at least this weight",
                   metavar="MIN")
     op.add_option('-p','--predict',dest='min_predict',type=float,
-                  help="Only calculate model predictions from parental with least this weight",
+                  help="Only calculate model predictions from parental sets with least this weight",
                   metavar="MIN")
+
+    op.add_option('--nweight',dest='num_weight',type=int,
+                  help="Extract a maximum of N parental sets (default 100)",
+                  metavar="N")
+    op.add_option('--npredict',dest='num_predict',type=int,
+                  help="Calculate a maximum of N model predictions (default 10)",
+                  metavar="N")
 
     # parse our command line arguments
     return op.parse_args(args)
@@ -116,20 +126,37 @@ def main(args = None):
         if min_predict < min_weight:
             logging.warn("Minimum prediction weight should be greater than weight filter")
 
+    num_weight = op.num_weight
+    if num_weight < 10:
+        logging.warn("Extracting this few parental sets is unlikely to be informative, try increasing nweight")
+    if num_weight > 10000:
+        logging.warn("Extracting this many parental sets is likely cause your browser to fail, try decreasing nweight")
+
+    if op.num_predict is None:
+        num_predict = 20
+    else:
+        num_predict = op.num_predict
+        if num_predict < 2:
+            logging.warn("Extracting this few predictions is unlikely to be informative, try increasing npredict")
+        if num_predict > 50:
+            logging.warn("Extracting this many predictions is likely cause your browser to fail, try decreasing npredict")
+
     if len(fname) < 1:
         logging.error("I need at least one file to process")
         sys.exit(1)
 
+    todom = lambda fd: get_dom(pp.Model(fd), min_weight, min_predict, num_weight, num_predict)
+
     try:
         with h5.File(fname[0],"r") as fd:
-            dom = get_dom(pp.Model(fd), min_weight, min_predict)
+            dom = todom(fd)
     except IOError as err:
         sys.stderr.write("Error opening file {path}: {err}\n".format(path=repr(fname[0]), err=str(err)))
         sys.exit(1)
 
     for path in fname[1:]:
         with h5.File(path,"r") as fd:
-            dom = merge_dom(dom,get_dom(pp.Model(fd), min_weight, min_predict))
+            dom = merge_dom(dom,todom(fd))
 
     sys.stdout.write("csires = ")
     json.dump(dom,sys.stdout)
