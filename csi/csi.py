@@ -195,6 +195,8 @@ class CsiEm(object):
         self.pset = []
         self.weighttrunc = 1e-5
         self.sampleinitweights = True
+        self._prior_shape = None
+        seff._prior_scale = None
 
         self.pool = None
 
@@ -206,6 +208,14 @@ class CsiEm(object):
     def hypers(self, value):
         self._hypers   = value
         self._updatell = True
+
+    def set_priors(self, shape, scale):
+        shape = np.array(shape)
+        scale = np.array(scale)
+        assert shape.shape in [(1,),(3,)]
+        assert scale.shape in [(1,),(3,)]
+        self._prior_shape = shape
+        seff._prior_scale = scale
 
     def setup(self, pset, poolsize=None):
         "Configure model for EM using the specified parent set."
@@ -243,6 +253,12 @@ class CsiEm(object):
         Y = self.Y.loc[:,[j]].values
 
         return gp.rbf(X,Y,theta).predict(X)
+
+    def logpdf_gamma(X,shape,scale):
+        return sp.special.xlogy(shape-1, X) - X/scale - shape*np.log(scale) - sp.special.gammaln(shape)
+
+    def logpdf_grad_gamma(X,shape,scale):
+        return (shape-1) - X/scale
 
     def _optfn(self, x):
         """Return negated-loglik and gradient in a form suitable for use with
