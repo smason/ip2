@@ -282,7 +282,7 @@ class CsiEm(object):
             ll = 0.
             grad = np.zeros(len(x))
         else:
-            ll   = sum(np.log(x)*(self._prior_shape-1)-(x/self._prior_scale))
+            ll   = sum(sp.special.xlogy(self._prior_shape-1,x)-(x/self._prior_scale))
             grad = (self._prior_shape - 1)/x - 1/self._prior_scale
 
         for l,g in itr:
@@ -329,7 +329,7 @@ class CsiEm(object):
         w0 = self.weights
         self.weights = w
         # calculate the KL divergence
-        kl = (w * np.log(w / w0)).sum()
+        kl = sp.special.xlogy(w,w / w0).sum()
 
         # update optimiser tolerance
         self.tol = min(self.tol,max(kl/3,1e-4))
