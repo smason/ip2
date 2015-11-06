@@ -152,6 +152,7 @@ def main(args=None):
 
     cc = csi.Csi(inp)
     em = cc.getEm()
+    em.set_priors(10,0.1)
 
     if hdf5output:
         cc.write_hdf5(hdf5output)

@@ -11,6 +11,7 @@ _LOG_2_PI = 1.837877066409345483556
 
 class rbf(object):
     def __init__(self, X, Y, theta):
+        theta = theta ** [2,1,2]
         [sf2, l2, sn2] = theta
 
         # evaluate RBF kernel for our given X
@@ -74,12 +75,12 @@ class rbf(object):
 
         gradient = np.zeros(3)
         # fill in gradient of sn2
-        gradient[2] = np.diag(dL_dK).sum()
+        gradient[2] = np.diag(dL_dK).sum() * np.sqrt(sn2)*2
 
         # multiply to save duplication of work
         dL_dK *= K
         # gradient of sf2
-        gradient[0] = np.sum(dL_dK) / sf2
+        gradient[0] = np.sum(dL_dK) / sf2 * np.sqrt(sf2)*2
         # gradient of l2
         gradient[1] = np.sum(dist.squareform(r)**2 * dL_dK) / l2
 

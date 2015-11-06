@@ -196,7 +196,7 @@ class CsiEm(object):
         self.weighttrunc = 1e-5
         self.sampleinitweights = True
         self._prior_shape = None
-        seff._prior_scale = None
+        self._prior_scale = None
 
         self.pool = None
 
@@ -210,12 +210,17 @@ class CsiEm(object):
         self._updatell = True
 
     def set_priors(self, shape, scale):
+        assert (shape is None) == (scale is None)
+        if shape is None:
+            self._prior_shape = None
+            self._prior_scale = None
+            return
         shape = np.array(shape)
         scale = np.array(scale)
-        assert shape.shape in [(1,),(3,)]
-        assert scale.shape in [(1,),(3,)]
+        assert shape.shape in [(),(3,)]
+        assert scale.shape in [(),(3,)]
         self._prior_shape = shape
-        seff._prior_scale = scale
+        self._prior_scale = scale
 
     def setup(self, pset, poolsize=None):
         "Configure model for EM using the specified parent set."
@@ -254,12 +259,6 @@ class CsiEm(object):
 
         return gp.rbf(X,Y,theta).predict(X)
 
-    def logpdf_gamma(X,shape,scale):
-        return sp.special.xlogy(shape-1, X) - X/scale - shape*np.log(scale) - sp.special.gammaln(shape)
-
-    def logpdf_grad_gamma(X,shape,scale):
-        return (shape-1) - X/scale
-
     def _optfn(self, x):
         """Return negated-loglik and gradient in a form suitable for use with
         SciPy's numeric optimisation."""
@@ -274,13 +273,17 @@ class CsiEm(object):
                 continue
             ip.append((i,w,x))
 
-        ll = 0.
-        grad = np.zeros(len(x))
-
         if self.pool is None:
             itr = map(self.worker.loglik_grad, ip)
         else:
             itr = self.pool.imap_unordered(_pool_loglik_grad, ip, 10)
+
+        if self._prior_shape is None:
+            ll = 0.
+            grad = np.zeros(len(x))
+        else:
+            ll   = sum(np.log(x)*(self._prior_shape-1)-(x/self._prior_scale))
+            grad = (self._prior_shape - 1)/x - 1/self._prior_scale
 
         for l,g in itr:
             ll   += l
