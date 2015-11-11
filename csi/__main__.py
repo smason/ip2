@@ -41,6 +41,8 @@ def cmdparser(args):
                   help="Limit analysis to a specific gene (repeat for more than one)")
     op.add_option('--mp',dest='numprocs',type='int',
                   help="Number of CPU cores (worker processes) to use")
+    op.add_option('--gpprior',dest='gpprior', metavar='PRIORS',
+                  help="Gaussian Process Hyperparameters, 'shape,scale'")
 
     # define output parameters
     op.add_option_group(out)
@@ -63,6 +65,30 @@ def cmdparser(args):
 
     # parse our command line arguments
     return op.parse_args(args)
+
+def parse_gp_hyperparam_priors(s):
+    """parse a string of the form 'a,b' or 'a1 a2 a3,b1 b2 b3' and return as
+    None or a tuple of numpy arrays"""
+    # define some regular expressions to parse the strings
+    f = r'[0-9]*\.?[0-9]*(?:e[+-]?[0-9]+)?'
+    r1 = re.compile(r'^ *({f}) *$'.format(f=f))
+    r3 = re.compile(r'^ *({f}) +({f}) +({f}) *$'.format(f=f))
+    # take a string and return a numpy array or raise an exception
+    def parse(a):
+        m = r1.match(a)
+        if m is not None:
+            return np.array(m.groups()[0],dtype=float)
+        m = r3.match(a)
+        if m is not None:
+            return np.array(m.groups(),dtype=float)
+        raise ValueError("Unable to parse {0} as hyperparameter prior".format(repr(a)))
+    # split the string into two
+    arr = s.split(',')
+    if len(arr) != 2:
+        raise ValueError('Expecting only one comma in hyperparameters')
+    # parse the two sides
+    return (parse(arr[0]),
+            parse(arr[1]))
 
 def main(args=None):
     if args is None:
@@ -104,6 +130,15 @@ def main(args=None):
         sys.stderr.write("Error: must have one or more worker process")
         sys.exit(1)
 
+    if op.gpprior is None:
+        gpprior = None
+    else:
+        try:
+            gpprior = parse_gp_hyperparam_priors(op.gpprior)
+        except ValueError(s):
+            sys.stderr.write("Error: "+s)
+            sys.exit(1)
+
     # figure out where our output is going
     if op.csvoutput is None or op.csvoutput == '-':
         csvout = csv.writer(sys.stdout)
@@ -135,6 +170,10 @@ def main(args=None):
                     ", ".join([repr(x) for x in inp.columns.levels[0]]))
         logger.info("Time: %s",
                     ", ".join([repr(x) for x in inp.columns.levels[1]]))
+        if gpprior is None:
+            logger.info("Hyperparameters: uniform")
+        else:
+            logger.info("Hyperparameters: Gamma({0},{1})".format(*gpprior))
 
     # figure out which genes/rows we're going to process
     genes = op.genes
@@ -152,7 +191,9 @@ def main(args=None):
 
     cc = csi.Csi(inp)
     em = cc.getEm()
-    em.set_priors(10,0.1)
+
+    if gpprior:
+        em.set_priors(gpprior[0], gpprior[1])
 
     if hdf5output:
         cc.write_hdf5(hdf5output)
