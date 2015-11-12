@@ -9,7 +9,7 @@ import multiprocessing as mp
 
 import itertools as it
 
-import csi.gp as gp
+import gp
 
 import logging
 logger = logging.getLogger('CSI')
