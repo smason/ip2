@@ -4,11 +4,11 @@ import h5py as h5
 import gp
 
 class Model(object):
-    def __init__(self, fd):
-        self.fd = fd
+    def __init__(self, h5fd):
+        self.fd = h5fd
 
-        self.items = [s.decode('utf-8') for s in fd['items']]
-        self.reps  = [Replicate(d) for d in fd['data'].values()]
+        self.items = [s.decode('utf-8') for s in h5fd['items']]
+        self.reps  = [Replicate(d) for d in h5fd['data'].values()]
 
     def get_res(self, res):
         return Result(self, self.fd["result/{0}".format(res+1)])
