@@ -72,7 +72,7 @@ class CsiEmFailed(CsiError):
         self.res = res
 
 class CsiResult(object):
-    def to_dom(self):
+    def write_hdf5(self, file, num):
         raise NotImplementedError
 
 class EmRes(CsiResult):
@@ -131,19 +131,6 @@ class EmRes(CsiResult):
         grp.create_dataset('loglik',data=self.ll)
         grp.create_dataset('weight',data=self.weights)
         grp.create_dataset('parents',data=pset)
-
-    def to_dom(self, predictions=False):
-        ret = dict(restype="EM",
-                   item=self.pset[0][1],
-                   hyperparams=self.hypers.tolist(),
-                   weights=self.weights.tolist(),
-                   loglik=self.ll.tolist(),
-                   parents=[a for (a,_) in self.pset])
-
-        if predictions:
-            ret[predictions] = list(self.enum_predictions())
-
-        return ret
 
 class CsiEmWorker(object):
     def __init__(self, X, Y, pset):
@@ -382,16 +369,6 @@ class Csi(object):
     def getEm(self):
         "For getting at a MAP estimate via expectation-maximisation."
         return CsiEm(self)
-
-    def to_dom(self, res):
-        "@res is a list of objects derived from CsiResult's"
-        reps = self.get_replicates()
-
-        data = [self.data.iloc[:,r.iloc].values.tolist() for r in reps]
-
-        return dict(replicates=[dict(id=r.name,time=r.time) for r in reps],
-                    items=[dict(id=n,data=d) for (n,d) in zip(self._items,data)],
-                    results=[r.to_dom() for r in res])
 
     def write_hdf5(self, file):
         file.create_dataset('items', data=np.string_(self._items))

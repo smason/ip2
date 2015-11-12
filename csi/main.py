@@ -7,7 +7,6 @@ import re
 import itertools as it
 
 import h5py as h5
-import json
 
 import logging
 
@@ -46,12 +45,8 @@ def cmdparser(args):
 
     # define output parameters
     op.add_option_group(out)
-    out.add_option('-o','--csv',dest='csvoutput',
+    out.add_option('--csv',dest='csvoutput',
                    help="write CSV output to FILE", metavar='FILE')
-    out.add_option('--pdf',dest='pdfoutput',
-                   help="write PDF output to FILE", metavar='FILE')
-    out.add_option('--json',dest='jsonoutput',
-                   help="write JSON output to FILE", metavar='FILE')
     out.add_option('--hdf5',dest='hdf5output',
                    help="write HDF5 output to FILE", metavar='FILE')
 
@@ -140,20 +135,22 @@ def main(args=None):
             sys.exit(1)
 
     # figure out where our output is going
-    if op.csvoutput is None or op.csvoutput == '-':
-        csvout = csv.writer(sys.stdout)
+    if op.csvoutput is None:
+        csvoutput = None
     else:
-        csvout = csv.writer(open(op.csvoutput,'w'))
-
-    if op.jsonoutput:
-        jsonoutput = open(op.jsonoutput,'w')
-    else:
-        jsonoutput = None
+        if op.csvoutput == '-':
+            fd = sys.stdout
+        else:
+            fd = open(op.csvoutput,'w')
+        csvoutput = csv.writer(fd)
 
     if op.hdf5output:
         hdf5output = h5.File(op.hdf5output,'w')
     else:
         hdf5output = None
+
+    if hdf5output is None or csvout is None:
+        logger.warning("No output will be saved, this is only useful for debugging and benchmarking.")
 
     # load the data from disk
     inp = csi.loadData(fname[0])
@@ -220,18 +217,12 @@ def main(args=None):
                 initweights=op.initweights))
             sys.exit(1)
 
-    results = []
     for i,res in enumerate(csi.runCsiEm(em, genes, lambda gene: cc.allParents(gene,depth), numprocs)):
-        res.writeCsv(csvout)
-        results.append(res)
+        if csvoutput:
+            res.writeCsv(csvoutput)
         if hdf5output:
             res.write_hdf5(hdf5output, i)
             hdf5output.flush()
-
-    if jsonoutput is not None:
-        json.dump(cc.to_dom(results), jsonoutput)
-
-    # plot in pdf?  an interactive html page may be better!
 
 if __name__ == '__main__':
     main()
