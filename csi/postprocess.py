@@ -2,7 +2,7 @@ import json
 import sys
 
 import h5py as h5
-import csi.h5reader as pp
+import h5reader as pp
 
 import optparse
 import logging
@@ -142,7 +142,8 @@ def main(args = None):
             logging.warn("Extracting this many predictions is likely cause your browser to fail, try decreasing npredict")
 
     if len(fname) < 1:
-        logging.error("I need at least one file to process")
+        sys.stderr.write("Error: I need at least one file to process,\n"
+                         "  rerun with --help to get a summary of accepted options.\n")
         sys.exit(1)
 
     todom = lambda fd: get_dom(pp.Model(fd), min_weight, min_predict, num_weight, num_predict)
