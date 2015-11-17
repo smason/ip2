@@ -29,7 +29,8 @@ def cmdparser(args):
         verbose=False,
         normalise=True,
         depth=2,
-        depgenes=[])
+        depgenes=[],
+        gpprior='10,0.1')
 
     # define general parameters
     op.add_option('-v','--verbose',dest='verbose',action='count',
@@ -125,7 +126,7 @@ def main(args=None):
         sys.stderr.write("Error: must have one or more worker process")
         sys.exit(1)
 
-    if op.gpprior is None:
+    if op.gpprior is None or op.gpprior == 'uniform':
         gpprior = None
     else:
         try:
@@ -149,8 +150,9 @@ def main(args=None):
     else:
         hdf5output = None
 
-    if hdf5output is None or csvout is None:
-        logger.warning("No output will be saved, this is only useful for debugging and benchmarking.")
+    if hdf5output is None or csvoutput is None:
+        logger.warning("No output will be saved, "
+                       "this is only useful for debugging and benchmarking.")
 
     # load the data from disk
     inp = csi.loadData(fname[0])
