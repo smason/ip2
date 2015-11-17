@@ -105,7 +105,7 @@
 	  </tr>
 	</thead>
 	<tbody>
-	  <tr ng-repeat="mod in itemresults.result.models | limitTo:100">
+          <tr ng-repeat="mod in itemresults.result.models">
             <td ng-bind-html="mod.pset | parents : itemresults : networktype : weightthresh"></td>
 	    <td>{{mod.weight | longweight}}</td>
 	  </tr>

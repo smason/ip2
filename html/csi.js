@@ -71,7 +71,7 @@ app.filter('hyperpar',  function() {
     return function(x) {
         if (x === undefined)
             return "";
-        return fmt(Math.sqrt(x));
+        return fmt(x);
     };
 });
 
@@ -353,7 +353,7 @@ var plotGpEst = function(time, muvar, lik, yscale) {
             .attr("d",function(d,i) {
                 var s = "";
                 for (var i = 0; i < d.mu.length; i++) {
-                    var sd = Math.sqrt(d.var[i]+lik)*2;
+                    var sd = Math.sqrt(d.var[i]+lik*lik)*2;
                     s += ("M"+time[i+1]+","+yscale(d.mu[i]-sd)+
                           "L"+time[i+1]+","+yscale(d.mu[i]+sd));
                 }
