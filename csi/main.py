@@ -150,7 +150,7 @@ def main(args=None):
     else:
         hdf5output = None
 
-    if hdf5output is None or csvoutput is None:
+    if hdf5output is None and csvoutput is None:
         logger.warning("No output will be saved, "
                        "this is only useful for debugging and benchmarking.")
 
