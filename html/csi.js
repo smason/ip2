@@ -752,6 +752,7 @@ app.controller('CSI', function ($scope, $filter) {
             lines.push("]")
         });
 
+        var fmt = d3.format(".2g");
         angular.forEach($scope.allmarginals, function (it) {
             if (it.prob < $scope.weightthresh)
                 return;
@@ -760,7 +761,7 @@ app.controller('CSI', function ($scope, $filter) {
             lines.push("edge [")
             lines.push("source "+it.parent.ord)
             lines.push("target "+it.target.ord)
-            lines.push("weight "+it.prob)
+            lines.push("weight "+fmt(it.prob))
             lines.push("]")
         });
 
