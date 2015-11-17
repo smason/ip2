@@ -762,6 +762,7 @@ app.controller('CSI', function ($scope, $filter) {
             lines.push("source "+it.parent.ord)
             lines.push("target "+it.target.ord)
             lines.push("weight "+fmt(it.prob))
+            lines.push("interaction \"pd\"")
             lines.push("]")
         });
 
