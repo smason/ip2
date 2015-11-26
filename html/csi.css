@@ -44,6 +44,10 @@
     visibility: hidden;
 }
 
+.subplot {
+    transition: transform .2s;
+}
+
 #arrow {
     fill: crimson;
 }
